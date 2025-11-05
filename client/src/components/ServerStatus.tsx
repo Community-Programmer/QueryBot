@@ -8,7 +8,9 @@ const ServerStatus = () => {
   useEffect(() => {
     const checkServerStatus = async () => {
       try {
-        const response = await fetch(`${config.API_BASE_URL.replace('/api', '')}/health`);
+        const response = await fetch(`${config.API_BASE_URL.replace('/api', '')}/health`, {
+          credentials: 'include' // Include cookies in request
+        });
         if (response.ok) {
           setStatus('online');
         } else {

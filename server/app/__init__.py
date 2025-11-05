@@ -28,8 +28,13 @@ def create_app(config_name=None):
     # Load configuration
     app.config.from_object(config[config_name])
     
-    # Initialize CORS
-    CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"])
+    # Initialize CORS with credentials support
+    CORS(app, 
+         origins=app.config.get('CORS_ORIGINS', ["http://localhost:5173"]),
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"], 
+         supports_credentials=True,  # Essential for cookie-based auth
+         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         expose_headers=["Set-Cookie"])
     
     # Initialize extensions
     init_extensions(app)

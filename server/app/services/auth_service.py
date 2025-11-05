@@ -2,7 +2,7 @@
 Authentication service layer for user registration and login.
 """
 from typing import Dict, Optional, Tuple, Any
-from flask_jwt_extended import create_access_token, create_refresh_token
+from flask_jwt_extended import create_access_token, create_refresh_token, set_access_cookies, set_refresh_cookies
 from marshmallow import ValidationError
 
 from app.models.user_model import User
@@ -61,22 +61,12 @@ class AuthService:
             # Save to database
             new_user.save()
             
-            # Generate JWT tokens
-            access_token = create_access_token(identity=str(new_user.id))
-            refresh_token = create_refresh_token(identity=str(new_user.id))
-            
-            # Prepare response data
+            # Prepare response data (tokens will be set as cookies in the route)
             user_data = user_response_schema.dump(new_user)
-            auth_data = {
-                'user': user_data,
-                'access_token': access_token,
-                'refresh_token': refresh_token,
-                'token_type': 'Bearer'
-            }
             
             return success_response(
                 message='User registered successfully',
-                data=auth_data,
+                data={'user': user_data},
                 status_code=201
             )
             
@@ -121,22 +111,12 @@ class AuthService:
             # Update last login
             user.update_last_login()
             
-            # Generate JWT tokens
-            access_token = create_access_token(identity=str(user.id))
-            refresh_token = create_refresh_token(identity=str(user.id))
-            
-            # Prepare response data
+            # Prepare response data (tokens will be set as cookies in the route)
             user_data = user_response_schema.dump(user)
-            auth_data = {
-                'user': user_data,
-                'access_token': access_token,
-                'refresh_token': refresh_token,
-                'token_type': 'Bearer'
-            }
             
             return success_response(
                 message='Login successful',
-                data=auth_data
+                data={'user': user_data}
             )
             
         except Exception as e:

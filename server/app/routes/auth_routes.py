@@ -1,11 +1,16 @@
 """
 Authentication routes for user signup, login, and token management.
 """
-from flask import Blueprint, request
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from flask import Blueprint, request, make_response, jsonify
+from flask_jwt_extended import (
+    jwt_required, get_jwt_identity, get_jwt, 
+    create_access_token, create_refresh_token,
+    set_access_cookies, set_refresh_cookies, 
+    unset_jwt_cookies
+)
 
 from app.services.auth_service import AuthService
-from app.utils.responses import error_response
+from app.utils.responses import error_response, success_response
 
 
 # Create authentication blueprint
@@ -26,7 +31,7 @@ def signup():
     }
     
     Returns:
-        JSON response with user data and JWT token
+        JSON response with user data and sets JWT cookies
     """
     try:
         # Get JSON data from request
@@ -36,12 +41,33 @@ def signup():
             return error_response('Request must contain JSON data', 400)
         
         # Use AuthService to register user
-        response, status_code = AuthService.register_user(data)
+        response_tuple = AuthService.register_user(data)
         
-        return response, status_code
+        # Unpack the tuple (jsonify response, status_code)
+        flask_response, status_code = response_tuple
+        
+        if status_code == 201:  # Success
+            # Get the JSON data from the Flask response to extract user info
+            response_data = flask_response.get_json()
+            user_data = response_data['data']['user']
+            
+            # Create JWT tokens
+            access_token = create_access_token(identity=str(user_data['id']))
+            refresh_token = create_refresh_token(identity=str(user_data['id']))
+            
+            # Create new response with cookies
+            response = make_response(flask_response.get_data(), 201)
+            response.content_type = 'application/json'
+            set_access_cookies(response, access_token)
+            set_refresh_cookies(response, refresh_token)
+            
+            return response
+        else:
+            # Return error response as is
+            return response_tuple
         
     except Exception as e:
-        print(e)
+        print(f"Signup error: {e}")
         return error_response(
             'Registration failed. Please try again.',
             500
@@ -60,7 +86,7 @@ def login():
     }
     
     Returns:
-        JSON response with user data and JWT token
+        JSON response with user data and sets JWT cookies
     """
     try:
         # Get JSON data from request
@@ -70,11 +96,33 @@ def login():
             return error_response('Request must contain JSON data', 400)
         
         # Use AuthService to authenticate user
-        response, status_code = AuthService.login_user(data)
+        response_tuple = AuthService.login_user(data)
         
-        return response, status_code
+        # Unpack the tuple (jsonify response, status_code)
+        flask_response, status_code = response_tuple
+        
+        if status_code == 200:  # Success
+            # Get the JSON data from the Flask response to extract user info
+            response_data = flask_response.get_json()
+            user_data = response_data['data']['user']
+            
+            # Create JWT tokens
+            access_token = create_access_token(identity=str(user_data['id']))
+            refresh_token = create_refresh_token(identity=str(user_data['id']))
+            
+            # Create new response with cookies
+            response = make_response(flask_response.get_data(), 200)
+            response.content_type = 'application/json'
+            set_access_cookies(response, access_token)
+            set_refresh_cookies(response, refresh_token)
+            
+            return response
+        else:
+            # Return error response as is
+            return response_tuple
         
     except Exception as e:
+        print(f"Login error: {e}")
         return error_response(
             'Login failed. Please try again.',
             500
@@ -85,27 +133,47 @@ def login():
 @jwt_required(refresh=True)
 def refresh():
     """
-    Refresh access token using refresh token.
-    
-    Requires:
-        Authorization header with refresh token
+    Refresh access token using refresh token from cookies.
     
     Returns:
-        JSON response with new access token
+        JSON response with new access token set in cookies
     """
     try:
         # Get current user identity from refresh token
         current_user_id = get_jwt_identity()
+        print(f"Refresh token request for user ID: {current_user_id}")
         
-        # Use AuthService to refresh token
-        response, status_code = AuthService.refresh_token(current_user_id)
+        # Validate user still exists and is active
+        user = AuthService.get_user_by_id(current_user_id)
+        if not user or not user.is_active:
+            print(f"User not found or inactive: {current_user_id}")
+            return error_response('Invalid refresh token', 401)
         
-        return response, status_code
+        # Create new access token
+        new_access_token = create_access_token(identity=str(user.id))
+        print(f"New access token created for user: {user.id}")
+        
+        # Create response data (success_response returns (flask_response, status_code))
+        flask_response, status_code = success_response(
+            'Token refreshed successfully',
+            {'message': 'Access token refreshed'}
+        )
+        
+        # Create Flask response and set new access cookie
+        response = make_response(flask_response.get_data(), status_code)
+        response.content_type = 'application/json'
+        set_access_cookies(response, new_access_token)
+        
+        print("Access token cookie set successfully")
+        return response
         
     except Exception as e:
+        print(f"Token refresh error: {e}")
+        import traceback
+        traceback.print_exc()
         return error_response(
             'Token refresh failed. Please try again.',
-            500
+            401
         )
 
 
@@ -155,32 +223,65 @@ def get_profile():
 @jwt_required()
 def logout():
     """
-    Logout user (optional endpoint for token revocation).
-    
-    Note: Since JWTs are stateless, true logout requires token blacklisting
-    or client-side token removal. This endpoint serves as a placeholder
-    for implementing token revocation in the future.
-    
-    Requires:
-        Authorization header with access token
+    Logout user by clearing JWT cookies.
     
     Returns:
         JSON response confirming logout
     """
     try:
-        # Get the JTI (unique identifier of the JWT)
-        jti = get_jwt()['jti']
+        # Create response data
+        response_data, _ = success_response('Logged out successfully')
         
-        # TODO: Implement token blacklisting here if needed
-        # For now, just return a success message
+        # Create Flask response and clear cookies
+        response = make_response(jsonify(response_data), 200)
+        unset_jwt_cookies(response)
         
-        from app.utils.responses import success_response
-        return success_response('Logged out successfully')
+        return response
         
     except Exception as e:
+        print(f"Logout error: {e}")
         return error_response(
             'Logout failed. Please try again.',
             500
+        )
+
+
+@auth_bp.route('/check', methods=['GET'])
+@jwt_required()
+def check_auth():
+    """
+    Check if user is authenticated and return user data.
+    
+    Returns:
+        JSON response with user data if authenticated
+    """
+    try:
+        # Get current user identity from access token
+        current_user_id = get_jwt_identity()
+        
+        # Get user from database
+        user = AuthService.get_user_by_id(current_user_id)
+        
+        if not user:
+            return error_response('User not found', 404)
+        
+        if not user.is_active:
+            return error_response('Account is deactivated', 403)
+        
+        # Return user data
+        from app.schemas.user_schema import user_response_schema
+        user_data = user_response_schema.dump(user)
+        
+        return success_response(
+            'Authentication valid',
+            {'user': user_data}
+        )
+        
+    except Exception as e:
+        print(f"Auth check error: {e}")
+        return error_response(
+            'Authentication check failed',
+            401
         )
 
 

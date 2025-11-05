@@ -1,13 +1,13 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { AuthState, LoginRequest, SignupRequest } from '@/types/auth';
 import { AuthAPI } from '@/services/authAPI';
 
-// Initial state
+// Initial state - no tokens stored in client, authentication checked via API
 const initialState: AuthState = {
   user: null,
-  accessToken: localStorage.getItem('querybot_access_token'),
-  refreshToken: localStorage.getItem('querybot_refresh_token'),
-  isAuthenticated: !!localStorage.getItem('querybot_access_token'),
+  accessToken: null, // Not stored in client anymore
+  refreshToken: null, // Not stored in client anymore
+  isAuthenticated: false, // Will be determined by API call
   isLoading: false,
   error: null,
 };
@@ -18,11 +18,7 @@ export const loginUser = createAsyncThunk(
   async (credentials: LoginRequest, { rejectWithValue }) => {
     try {
       const response = await AuthAPI.login(credentials);
-      
-      // Store tokens in localStorage
-      localStorage.setItem('querybot_access_token', response.data.access_token);
-      localStorage.setItem('querybot_refresh_token', response.data.refresh_token);
-      
+      // Tokens are now set as httpOnly cookies by the server
       return response;
     } catch (error: any) {
       if (error.code === 'NETWORK_ERROR' || !error.response) {
@@ -39,11 +35,7 @@ export const signupUser = createAsyncThunk(
   async (userData: SignupRequest, { rejectWithValue }) => {
     try {
       const response = await AuthAPI.signup(userData);
-      
-      // Store tokens in localStorage
-      localStorage.setItem('querybot_access_token', response.data.access_token);
-      localStorage.setItem('querybot_refresh_token', response.data.refresh_token);
-      
+      // Tokens are now set as httpOnly cookies by the server
       return response;
     } catch (error: any) {
       if (error.code === 'NETWORK_ERROR' || !error.response) {
@@ -66,6 +58,19 @@ export const signupUser = createAsyncThunk(
   }
 );
 
+export const checkAuthentication = createAsyncThunk(
+  'auth/checkAuth',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await AuthAPI.checkAuth();
+      return response.data.user;
+    } catch (error: any) {
+      // If auth check fails, user is not authenticated (don't treat as error)
+      return rejectWithValue(null); // Use null instead of error message
+    }
+  }
+);
+
 export const fetchUserProfile = createAsyncThunk(
   'auth/fetchProfile',
   async (_, { rejectWithValue }) => {
@@ -84,17 +89,10 @@ export const logoutUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       await AuthAPI.logout();
-      
-      // Clear tokens from localStorage
-      localStorage.removeItem('querybot_access_token');
-      localStorage.removeItem('querybot_refresh_token');
-      
+      // Cookies are cleared by the server
       return null;
     } catch (error: any) {
-      // Even if API call fails, clear local storage
-      localStorage.removeItem('querybot_access_token');
-      localStorage.removeItem('querybot_refresh_token');
-      
+      // Even if API call fails, consider user logged out
       const errorMessage = error.response?.data?.message || 'Logout failed';
       return rejectWithValue(errorMessage);
     }
@@ -115,20 +113,6 @@ const authSlice = createSlice({
       state.refreshToken = null;
       state.isAuthenticated = false;
       state.error = null;
-      localStorage.removeItem('querybot_access_token');
-      localStorage.removeItem('querybot_refresh_token');
-    },
-    updateTokens: (state, action: PayloadAction<{ accessToken: string; refreshToken?: string }>) => {
-      state.accessToken = action.payload.accessToken;
-      if (action.payload.refreshToken) {
-        state.refreshToken = action.payload.refreshToken;
-      }
-      state.isAuthenticated = true;
-      
-      localStorage.setItem('querybot_access_token', action.payload.accessToken);
-      if (action.payload.refreshToken) {
-        localStorage.setItem('querybot_refresh_token', action.payload.refreshToken);
-      }
     },
   },
   extraReducers: (builder) => {
@@ -141,8 +125,6 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.data.user;
-        state.accessToken = action.payload.data.access_token;
-        state.refreshToken = action.payload.data.refresh_token;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -160,8 +142,6 @@ const authSlice = createSlice({
       .addCase(signupUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.data.user;
-        state.accessToken = action.payload.data.access_token;
-        state.refreshToken = action.payload.data.refresh_token;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -169,6 +149,24 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
+      })
+      
+      // Check authentication cases
+      .addCase(checkAuthentication.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(checkAuthentication.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(checkAuthentication.rejected, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.isAuthenticated = false;
+        state.error = null; // Don't show error for failed auth check
       })
       
       // Fetch profile cases
@@ -210,6 +208,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, clearAuth, updateTokens } = authSlice.actions;
+export const { clearError, clearAuth } = authSlice.actions;
 
 export default authSlice.reducer;

@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Database, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/hooks/redux";
-import { loginUser, signupUser, clearError } from "@/store/slices/authSlice";
+import { loginUser, signupUser, clearError, checkAuthentication } from "@/store/slices/authSlice";
 import { toast } from "sonner";
 import ServerStatus from "@/components/ServerStatus";
 
