@@ -1,11 +1,29 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Database, Menu, X } from "lucide-react";
+import { Database, Menu, X, User, LogOut } from "lucide-react";
+import { useAppSelector, useAppDispatch } from "@/hooks/redux";
+import { logoutUser } from "@/store/slices/authSlice";
+import { toast } from "sonner";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
+
+  const handleLogout = async () => {
+    try {
+      const result = await dispatch(logoutUser());
+      if (logoutUser.fulfilled.match(result)) {
+        toast.success("Logged out successfully");
+      } else if (logoutUser.rejected.match(result)) {
+        toast.error("Logout failed, but you've been signed out locally");
+      }
+    } catch (error) {
+      toast.error("Logout failed, but you've been signed out locally");
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -46,16 +64,35 @@ const Navbar = () => {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/auth">
-              <Button variant="ghost" className="font-semibold">
-                Login
-              </Button>
-            </Link>
-            <Link to="/auth">
-              <Button className="bg-primary hover:bg-primary/90 font-semibold">
-                Sign Up Free
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10">
+                  <User className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">{user?.fullname}</span>
+                </div>
+                <Button 
+                  onClick={handleLogout}
+                  variant="ghost" 
+                  className="font-semibold flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost" className="font-semibold">
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button className="bg-primary hover:bg-primary/90 font-semibold">
+                    Sign Up Free
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -81,16 +118,35 @@ const Navbar = () => {
                 Docs
               </a>
               <div className="flex flex-col gap-2 mt-2">
-                <Link to="/auth">
-                  <Button variant="outline" className="w-full font-semibold">
-                    Login
-                  </Button>
-                </Link>
-                <Link to="/auth">
-                  <Button className="w-full bg-primary hover:bg-primary/90 font-semibold">
-                    Sign Up Free
-                  </Button>
-                </Link>
+                {isAuthenticated ? (
+                  <>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10">
+                      <User className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">{user?.fullname}</span>
+                    </div>
+                    <Button 
+                      onClick={handleLogout}
+                      variant="outline" 
+                      className="w-full font-semibold flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/auth">
+                      <Button variant="outline" className="w-full font-semibold">
+                        Login
+                      </Button>
+                    </Link>
+                    <Link to="/auth">
+                      <Button className="w-full bg-primary hover:bg-primary/90 font-semibold">
+                        Sign Up Free
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>
