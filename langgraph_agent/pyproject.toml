@@ -1,11 +1,19 @@
 [project]
 name = "langgraph-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "SQL Query Bot with Data Visualization Agent built with LangGraph"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "langchain>=1.0.4",
+    "langchain-openai>=1.0.2",
     "langgraph>=1.0.2",
+    "langgraph-cli[inmem]>=0.4.7",
     "python-dotenv>=1.2.1",
+    "typing-extensions>=4.15.0",
+]
+
+[dependency-groups]
+dev = [
+    "langgraph-cli[inmem]>=0.4.7",
 ]
