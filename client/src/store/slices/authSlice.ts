@@ -60,12 +60,15 @@ export const signupUser = createAsyncThunk(
 
 export const checkAuthentication = createAsyncThunk(
   'auth/checkAuth',
-  async (_, { rejectWithValue }) => {
+  async (isInitialCheck: boolean = false, { rejectWithValue }) => {
     try {
-      const response = await AuthAPI.checkAuth();
+      const response = isInitialCheck ? 
+        await AuthAPI.checkAuthInitial() : 
+        await AuthAPI.checkAuth();
       return response.data.user;
     } catch (error: any) {
       // If auth check fails, user is not authenticated (don't treat as error)
+      console.log('Auth check failed:', error.response?.status);
       return rejectWithValue(null); // Use null instead of error message
     }
   }

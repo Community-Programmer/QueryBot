@@ -9,19 +9,28 @@ interface AuthInitializerProps {
 const AuthInitializer = ({ children }: AuthInitializerProps) => {
   const dispatch = useAppDispatch();
   const [initialCheckComplete, setInitialCheckComplete] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
-    // Perform initial auth check
+    // Perform initial auth check only once
     const performInitialCheck = async () => {
+      if (isChecking) return; // Prevent multiple simultaneous calls
+      
+      setIsChecking(true);
       try {
-        await dispatch(checkAuthentication());
+        console.log('🔍 AuthInitializer: Performing initial auth check');
+        await dispatch(checkAuthentication(true)); // Use initial check to avoid interceptors
+        console.log('✅ AuthInitializer: Initial auth check complete');
+      } catch (error) {
+        console.log('❌ AuthInitializer: Auth check failed', error);
       } finally {
+        setIsChecking(false);
         setInitialCheckComplete(true);
       }
     };
 
     performInitialCheck();
-  }, [dispatch]);
+  }, [dispatch]); // Only depend on dispatch, not isChecking to avoid re-runs
 
   // Show loading spinner only during the initial auth check
   if (!initialCheckComplete) {
