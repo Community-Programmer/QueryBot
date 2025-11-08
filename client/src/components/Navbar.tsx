@@ -60,6 +60,9 @@ const Navbar = () => {
             <a href="#" className="text-foreground/80 hover:text-primary transition-colors font-medium">
               Docs
             </a>
+            <Link to="/playground" className="text-foreground/80 hover:text-primary transition-colors font-medium">
+              Playground
+            </Link>
           </div>
 
           {/* CTA Buttons */}

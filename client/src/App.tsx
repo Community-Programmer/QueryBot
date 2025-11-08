@@ -4,6 +4,7 @@ import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AuthInitializer from "@/components/AuthInitializer";
+import PlayGround from "./pages/PlayGround";
 
 function App() {
   return (
@@ -18,6 +19,11 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route path="/playground" element={
+          <ProtectedRoute requireAuth={true}>
+            <PlayGround />
+          </ProtectedRoute>
+        } />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthInitializer>
