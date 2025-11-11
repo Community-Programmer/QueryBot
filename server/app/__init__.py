@@ -66,8 +66,10 @@ def create_app(config_name=None):
 def register_blueprints(app):
     """Register application blueprints."""
     from app.routes.auth_routes import auth_bp
+    from app.routes.langgraph_routes import langgraph_bp
     
     app.register_blueprint(auth_bp)
+    app.register_blueprint(langgraph_bp)
 
 
 def register_error_handlers(app):

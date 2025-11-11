@@ -48,6 +48,10 @@ class Config:
     
     # CORS configuration
     CORS_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"]
+    
+    # LangGraph configuration
+    LANGSMITH_API_KEY = os.environ.get('LANGSMITH_API_KEY')
+    LANGGRAPH_API_URL = os.environ.get('LANGGRAPH_API_URL')
 
 
 class DevelopmentConfig(Config):
