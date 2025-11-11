@@ -132,36 +132,48 @@ class DataFormatter:
         if isinstance(results, str):
             results = eval(results)
 
-        formatted_data = {"series": []}
+        # Limit the number of data points to prevent frontend issues
+        max_points = 1000
+        if len(results) > max_points:
+            results = results[:max_points]
         
         if len(results[0]) == 2:
-            formatted_data["series"].append({
-                "data": [
-                    {"x": float(x), "y": float(y), "id": i+1}
-                    for i, (x, y) in enumerate(results)
-                ],
-                "label": "Data Points"
-            })
+            # Simple scatter plot with x,y coordinates
+            formatted_data = {
+                "series": [{
+                    "data": [
+                        {"x": float(x), "y": float(y), "id": i+1}
+                        for i, (x, y) in enumerate(results)
+                    ]
+                }]
+            }
         elif len(results[0]) == 3:
+            # Scatter plot with grouping (category)
             entities = {}
             for item1, item2, item3 in results:
                 # Determine which item is the label
-                if isinstance(item1, str) and not str(item1).replace(".", "").isdigit():
+                if isinstance(item1, str) and not str(item1).replace(".", "").replace("-", "").isdigit():
                     label, x, y = item1, float(item2), float(item3)
-                elif isinstance(item2, str) and not str(item2).replace(".", "").isdigit():
+                elif isinstance(item2, str) and not str(item2).replace(".", "").replace("-", "").isdigit():
                     label, x, y = item2, float(item1), float(item3)
                 else:
-                    label, x, y = item3, float(item1), float(item2)
+                    # If no clear string label, treat as simple x,y coordinates
+                    x, y = float(item1), float(item2)
+                    label = "Data Points"
                 
                 if label not in entities:
                     entities[label] = []
                 entities[label].append({"x": x, "y": y, "id": len(entities[label]) + 1})
             
-            for label, data in entities.items():
-                formatted_data["series"].append({
-                    "data": data,
-                    "label": label
-                })
+            formatted_data = {
+                "series": [
+                    {
+                        "data": data,
+                        "name": label if label != "Data Points" else None
+                    }
+                    for label, data in entities.items()
+                ]
+            }
         else:
             raise ValueError("Unexpected data format in results")                
 
