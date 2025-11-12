@@ -173,16 +173,16 @@ const PlayGround: React.FC = () => {
 
   // Styles for chat messages
   const getMessageStyles = (type: string) => {
-    const base = 'p-3.5 px-[18px] mb-3 rounded-xl shadow-sm animate-[slideIn_0.3s_ease]';
+    const base = 'p-4 px-5 rounded-xl shadow-sm animate-[slideIn_0.3s_ease] max-w-[85%] overflow-hidden';
     switch (type) {
       case 'user':
-        return `${base} bg-[#B4F0A7] text-[#333A3F] ml-5`;
+        return `${base} bg-[#B4F0A7] text-[#333A3F] ml-auto mr-2 border border-[#9FE895]`;
       case 'ai':
-        return `${base} bg-[#DDF7E3] text-[#333A3F] mr-5`;
+        return `${base} bg-[#DDF7E3] text-[#333A3F] mr-auto ml-2 border border-[#C5F2CC]`;
       case 'system':
-        return `${base} bg-[#009B72] text-white`;
+        return `${base} bg-[#009B72] text-white mx-auto border border-[#007d5c]`;
       case 'error':
-        return `${base} bg-[#ff6b6b] text-white`;
+        return `${base} bg-[#ff6b6b] text-white mx-auto border border-[#ff5252]`;
       default:
         return base;
     }
@@ -242,9 +242,9 @@ const PlayGround: React.FC = () => {
 
 
   return (
-    <div className="flex gap-6 p-6 min-h-screen bg-[#FAF9F6] max-w-[1920px] mx-auto flex-col lg:flex-row">
+    <div className="flex gap-6 p-6 h-screen bg-[#FAF9F6] max-w-[1920px] mx-auto flex-col lg:flex-row">
       {/* Left Panel */}
-      <div className="flex flex-col gap-5 w-full lg:w-[420px] flex-shrink-0">
+      <div className="flex flex-col gap-5 w-full lg:w-[420px] flex-shrink-0 h-full lg:h-auto">
         {/* Upload */}
         <Card className="p-0 bg-white border-2 border-dashed border-[#DDF7E3] rounded-2xl overflow-hidden hover:border-[#009B72] hover:shadow-lg transition-all duration-300">
           <label
@@ -280,10 +280,10 @@ const PlayGround: React.FC = () => {
         </div>
 
         {/* Chat */}
-        <Card className="flex-1 flex flex-col bg-white border border-[#DDF7E3] rounded-2xl overflow-hidden shadow-sm">
+        <Card className="flex-1 flex flex-col bg-white border border-[#DDF7E3] rounded-2xl overflow-hidden shadow-sm min-h-0">
           <div
             ref={chatContainerRef}
-            className="flex-1 p-5 h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#DDF7E3]"
+            className="flex-1 p-5 overflow-y-auto scrollbar-thin scrollbar-thumb-primary scrollbar-track-gray-100"
           >
             {chatMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-[#333A3F] opacity-40">
@@ -291,13 +291,24 @@ const PlayGround: React.FC = () => {
                 <p>Upload a file and ask questions about your data</p>
               </div>
             ) : (
-              <div className="flex flex-col">
+              <div className="flex flex-col space-y-3">
                 {chatMessages.map((msg, i) => (
                   <div key={i} className={getMessageStyles(msg.type)}>
-                    {msg.text}
+                    <div className="break-words whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                   </div>
                 ))}
-                {isRunning && <div className={getMessageStyles('ai')}>Processing your query...</div>}
+                {isRunning && (
+                  <div className={getMessageStyles('ai')}>
+                    <div className="break-words flex items-center gap-2">
+                      <span>Processing your query</span>
+                      <div className="flex space-x-1">
+                        <div className="w-1 h-1 bg-current rounded-full processing-dot"></div>
+                        <div className="w-1 h-1 bg-current rounded-full processing-dot"></div>
+                        <div className="w-1 h-1 bg-current rounded-full processing-dot"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div ref={chatMessagesEndRef} />
               </div>
             )}
@@ -323,8 +334,8 @@ const PlayGround: React.FC = () => {
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 min-w-0">
-        <Card className="h-[600px] lg:h-[calc(100vh-48px)] bg-white border border-[#DDF7E3] rounded-2xl flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-0 min-h-0">
+        <Card className="h-full bg-white border border-[#DDF7E3] rounded-2xl flex flex-col overflow-hidden">
           <div className="flex justify-between items-center p-6 border-b border-[#DDF7E3]">
             <h2 className="text-2xl font-bold text-[#333A3F]">Data Output</h2>
             <div className="flex gap-2">

@@ -12,7 +12,7 @@ class OutputState(TypedDict):
     answer: str
     visualization: str
     visualization_reason: str
-    chart_image_path: Optional[str]
+    chart_image_base64: Optional[str]
     chart_generation_error: Optional[str]
     insights: Optional[str]
     formatted_table: Optional[str]

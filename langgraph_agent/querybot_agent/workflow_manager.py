@@ -142,7 +142,7 @@ class WorkflowManager:
             "answer": result.get('answer', 'No answer generated'),
             "visualization": result.get('visualization', 'none'),
             "visualization_reason": result.get('visualization_reason', 'No reason provided'),
-            "chart_image_path": result.get('chart_image_path'),
+            "chart_image_base64": result.get('chart_image_base64'),
             "chart_generation_error": result.get('chart_generation_error'),
             "insights": result.get('insights'),
             "formatted_table": result.get('formatted_table'),

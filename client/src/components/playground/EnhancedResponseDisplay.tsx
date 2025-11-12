@@ -128,15 +128,25 @@ const EnhancedResponseDisplay: React.FC<EnhancedResponseDisplayProps> = ({
         {hasChart && (
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-4">Visualization</h3>
-            <Base64ImageDisplay 
-              base64Data={graphState.chart_image_base64!}
-              error={graphState.chart_generation_error}
-              className="w-full h-96"
-            />
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" style={{ minHeight: '400px', maxHeight: '60vh' }}>
+              <Base64ImageDisplay 
+                base64Data={graphState.chart_image_base64!}
+                error={graphState.chart_generation_error}
+                className="w-full h-full"
+              />
+            </div>
             {graphState.visualization_reason && (
-              <div className="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                <strong>Visualization Type:</strong> {graphState.visualization}<br />
-                <strong>Reason:</strong> {graphState.visualization_reason}
+              <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border">
+                <div className="space-y-2">
+                  <div>
+                    <span className="font-semibold text-gray-700">Visualization Type:</span>
+                    <span className="ml-2 text-gray-600">{graphState.visualization}</span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-700">Reason:</span>
+                    <div className="mt-1 text-gray-600">{graphState.visualization_reason}</div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -145,8 +155,10 @@ const EnhancedResponseDisplay: React.FC<EnhancedResponseDisplayProps> = ({
         {hasTable && (
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-4">Data Table</h3>
-            <div className="bg-gray-50 p-4 rounded-lg overflow-auto">
-              <pre className="whitespace-pre-wrap text-sm">{graphState.formatted_table}</pre>
+            <div className="bg-gray-50 p-4 rounded-lg overflow-auto max-h-96 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+              <div className="min-w-max">
+                <pre className="whitespace-pre-wrap text-sm">{graphState.formatted_table}</pre>
+              </div>
             </div>
           </div>
         )}
@@ -235,21 +247,25 @@ const EnhancedResponseDisplay: React.FC<EnhancedResponseDisplayProps> = ({
             <TabsContent value="chart" className="p-6 mt-0 h-full overflow-y-auto">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold mb-4 text-[#333A3F]">Visualization</h3>
-                <div className="flex justify-center">
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" style={{ minHeight: '400px', maxHeight: '70vh' }}>
                   <Base64ImageDisplay 
                     base64Data={graphState.chart_image_base64!}
                     error={graphState.chart_generation_error}
-                    className="w-full max-w-4xl"
+                    className="w-full h-full"
                   />
                 </div>
                 {graphState.visualization_reason && (
-                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <strong>Visualization Type:</strong> {graphState.visualization}
+                        <span className="font-semibold text-gray-700">Visualization Type:</span>
+                        <div className="mt-1 text-gray-600">{graphState.visualization}</div>
                       </div>
                       <div>
-                        <strong>Reason:</strong> <MarkdownRenderer content={graphState.visualization_reason} className="inline" />
+                        <span className="font-semibold text-gray-700">Reason:</span>
+                        <div className="mt-1">
+                          <MarkdownRenderer content={graphState.visualization_reason} className="text-gray-600" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -262,8 +278,10 @@ const EnhancedResponseDisplay: React.FC<EnhancedResponseDisplayProps> = ({
             <TabsContent value="table" className="p-6 mt-0 h-full overflow-y-auto">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold mb-4 text-[#333A3F]">Data Table</h3>
-                <div className="bg-gray-50 p-4 rounded-lg overflow-auto max-h-96 border">
-                  <MarkdownRenderer content={`\`\`\`\n${graphState.formatted_table || ''}\n\`\`\``} />
+                <div className="bg-gray-50 p-4 rounded-lg overflow-auto max-h-96 border scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+                  <div className="min-w-max">
+                    <MarkdownRenderer content={`\`\`\`\n${graphState.formatted_table || ''}\n\`\`\``} />
+                  </div>
                 </div>
               </div>
             </TabsContent>

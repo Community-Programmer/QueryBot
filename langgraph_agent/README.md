@@ -50,7 +50,7 @@ likely driven by higher population density and marketing investments.
 • Sales dropped 12% in February across all regions
 • No strong correlation between region size and revenue
 
-📊 Chart generated successfully: charts/sales_by_region_20241112_143052.png
+📊 Chart generated successfully (base64 encoded)
 ```
 
 ### Table Question
@@ -101,7 +101,7 @@ print(result["answer"])           # Comprehensive answer with narrative
 print(result["insights"])         # Key insights with emojis
 print(result["data_narrative"])   # Story explanation
 print(result["formatted_table"])  # Table if applicable
-print(result["chart_image_path"]) # Chart location
+print(result["chart_image_base64"]) # Chart as base64 data
 ```
 
 ### Response Structure
@@ -111,7 +111,7 @@ print(result["chart_image_path"]) # Chart location
     "insights": "📊 Key Insights: • Point 1 • Point 2 • Point 3",
     "data_narrative": "Story-like explanation of data patterns",
     "formatted_table": "Readable table format (if applicable)", 
-    "chart_image_path": "path/to/generated/chart.png",
+    "chart_image_base64": "iVBORw0KGgoAAAANSUhEUgAA...base64data...",
     "visualization": "bar|line|scatter|pie|etc",
     "visualization_reason": "Explanation for chart choice",
     "chart_generation_error": None,

@@ -3,7 +3,7 @@ Chart Generator Module - Uses Python REPL to generate visualizations locally.
 
 
 This module contains tools and agents for generating charts using matplotlib,
-seaborn, pandas, and numpy, and saving them as image files.
+seaborn, pandas, and numpy, and returning them as base64 encoded data.
 """
 
 
@@ -16,12 +16,13 @@ from langgraph.graph import END
 from querybot_agent.llm_manager import LLMManager
 import os
 import uuid
+import base64
 from datetime import datetime
 
 
 
 class ChartGenerator:
-    """Generates charts locally using Python REPL and saves them as images."""
+    """Generates charts locally using Python REPL and returns them as base64 encoded data."""
     
     def __init__(self):
         self.llm_manager = LLMManager()
@@ -153,7 +154,7 @@ Goal: Produce accurate, engaging, and professional charts that are saved as high
         
         # Skip chart generation if visualization is none or no data
         if visualization == "none" or not results:
-            return {"chart_image_path": None, "chart_generation_error": None}
+            return {"chart_image_base64": None, "chart_generation_error": None}
         
         try:
             # Create unique filename
@@ -191,19 +192,29 @@ Please execute this code to generate and save the chart. Make sure to follow all
             
             # Check if chart was successfully created
             if os.path.exists(chart_path):
+                # Convert image to base64
+                with open(chart_path, 'rb') as image_file:
+                    base64_data = base64.b64encode(image_file.read()).decode('utf-8')
+                
+                # Clean up the temporary file
+                try:
+                    os.remove(chart_path)
+                except:
+                    pass  # Ignore cleanup errors
+                
                 return {
-                    "chart_image_path": chart_path,
+                    "chart_image_base64": base64_data,
                     "chart_generation_error": None
                 }
             else:
                 return {
-                    "chart_image_path": None,
+                    "chart_image_base64": None,
                     "chart_generation_error": "Chart file was not created successfully"
                 }
                 
         except Exception as e:
             return {
-                "chart_image_path": None,
+                "chart_image_base64": None,
                 "chart_generation_error": f"Error generating chart: {str(e)}"
             }
     

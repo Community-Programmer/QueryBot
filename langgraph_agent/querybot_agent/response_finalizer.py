@@ -31,7 +31,7 @@ class ResponseFinalizer:
         insights = state.get('insights', '')
         data_narrative = state.get('data_narrative', '')
         formatted_table = state.get('formatted_table', '')
-        chart_image_path = state.get('chart_image_path')
+        chart_image_base64 = state.get('chart_image_base64')
         visualization = state.get('visualization', 'none')
         visualization_reason = state.get('visualization_reason', '')
         
@@ -60,8 +60,8 @@ class ResponseFinalizer:
             final_answer_parts.append(f"\n📋 Data Table:\n{formatted_table}")
         
         # Add chart information
-        if chart_image_path:
-            final_answer_parts.append(f"\n📊 Chart generated successfully: {chart_image_path}")
+        if chart_image_base64:
+            final_answer_parts.append(f"\n📊 Chart generated successfully (base64 encoded)")
         elif visualization != 'none' and chart_generation_error:
             final_answer_parts.append(f"\n⚠️ Chart generation failed: {chart_generation_error}")
         
@@ -72,7 +72,7 @@ class ResponseFinalizer:
             "answer": final_answer.strip(),
             "visualization": visualization,
             "visualization_reason": visualization_reason,
-            "chart_image_path": chart_image_path,
+            "chart_image_base64": chart_image_base64,
             "chart_generation_error": chart_generation_error,
             "insights": insights,
             "formatted_table": formatted_table,
@@ -109,7 +109,7 @@ class ResponseFinalizer:
             "answer": irrelevant_response,
             "visualization": "none",
             "visualization_reason": "Question not related to data visualization",
-            "chart_image_path": None,
+            "chart_image_base64": None,
             "chart_generation_error": None,
             "insights": "❌ No insights available - question not data-related",
             "formatted_table": None,
@@ -132,7 +132,7 @@ class ResponseFinalizer:
             return {
                 "visualization": "none",
                 "visualization_reason": "Chart generation not required for this question type",
-                "chart_image_path": None,
+                "chart_image_base64": None,
                 "chart_generation_error": None
             }
         elif skip_type == "table":

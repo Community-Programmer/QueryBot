@@ -35,7 +35,7 @@ def main():
     print("  • insights: Key data insights with emojis")
     print("  • data_narrative: Story-like explanations")
     print("  • formatted_table: Clean table presentation")
-    print("  • chart_image_path: Professional chart location")
+    print("  • chart_image_base64: Professional chart as base64 data")
 
 
 if __name__ == "__main__":

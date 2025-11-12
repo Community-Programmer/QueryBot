@@ -33,7 +33,7 @@ class QueryBotAgent:
             - answer: Human-readable answer to the question with insights and narrative
             - visualization: Recommended visualization type
             - visualization_reason: Explanation for the visualization choice
-            - chart_image_path: Path to generated chart image file (if any)
+            - chart_image_base64: Base64 encoded chart image data (if any)
             - chart_generation_error: Error message if chart generation failed
             - insights: Data insights with emoji indicators
             - formatted_table: Formatted data table (if applicable)
@@ -48,7 +48,7 @@ class QueryBotAgent:
                 "answer": f"I encountered an error while processing your question: {str(e)}",
                 "visualization": "none",
                 "visualization_reason": "Error occurred during processing",
-                "chart_image_path": None,
+                "chart_image_base64": None,
                 "chart_generation_error": str(e),
                 "insights": "📊 Error generating insights.",
                 "formatted_table": None,
@@ -71,7 +71,7 @@ def ask_question(question: str, database_uuid: str) -> Dict[str, Any]:
         database_uuid (str): UUID of the database
         
     Returns:
-        Dict with answer, chart image path, and visualization information
+        Dict with answer, chart image base64 data, and visualization information
     """
     agent = QueryBotAgent()
     return agent.query(question, database_uuid)

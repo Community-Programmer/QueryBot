@@ -271,6 +271,27 @@
     background: #9ca3af;
   }
 
+  .scrollbar-track-gray-200::-webkit-scrollbar-track {
+    background: #e5e7eb;
+  }
+
+  .scrollbar-thumb-gray-400::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+  }
+
+  .scrollbar-thumb-gray-400::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+  }
+
+  /* Chat and content scrollbars */
+  .scrollbar-thumb-primary::-webkit-scrollbar-thumb {
+    background: #DDF7E3;
+  }
+
+  .scrollbar-thumb-primary::-webkit-scrollbar-thumb:hover {
+    background: #009B72;
+  }
+
   /* Processing animation */
   @keyframes processing-pulse {
     0%, 100% {

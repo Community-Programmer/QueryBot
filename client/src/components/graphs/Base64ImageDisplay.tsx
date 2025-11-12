@@ -36,16 +36,31 @@ const Base64ImageDisplay: React.FC<Base64ImageDisplayProps> = ({
   const dataUrl = `data:image/png;base64,${base64Data}`;
 
   return (
-    <div className={`flex items-center justify-center ${className}`}>
-      <img 
-        src={dataUrl} 
-        alt={alt}
-        className="max-w-full max-h-full object-contain rounded-lg shadow-sm"
-        onError={(e) => {
-          console.error('Error loading base64 image:', e);
-          e.currentTarget.style.display = 'none';
-        }}
-      />
+    <div className={`overflow-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 ${className}`}>
+      <div className="flex items-center justify-center min-h-full p-4">
+        <img 
+          src={dataUrl} 
+          alt={alt}
+          className="max-w-full h-auto rounded-lg shadow-sm"
+          style={{ 
+            minWidth: '300px', 
+            maxWidth: '100%',
+            height: 'auto'
+          }}
+          onError={(e) => {
+            console.error('Error loading base64 image:', e);
+            e.currentTarget.style.display = 'none';
+          }}
+          onLoad={(e) => {
+            // Ensure image is properly centered and sized
+            const img = e.currentTarget;
+            const container = img.parentElement;
+            if (container) {
+              container.style.minHeight = `${Math.min(img.naturalHeight + 32, 600)}px`;
+            }
+          }}
+        />
+      </div>
     </div>
   );
 };
