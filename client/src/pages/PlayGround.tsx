@@ -350,23 +350,11 @@ const PlayGround: React.FC = () => {
             </div>
           </div>
 
-          {!graphState || (!graphState.answer && !graphState.chart_image_base64 && !graphState.formatted_table && !graphState.insights && !graphState.handle_irrelevant && !isRunning) ? (
-            <EnhancedResponseDisplay 
-              graphState={graphState || {} as GraphState} 
-              isRunning={false} 
-            />
-          ) : (graphState.answer || graphState.chart_image_base64 || graphState.formatted_table || graphState.insights || graphState.handle_irrelevant) ? (
-            <EnhancedResponseDisplay 
-              graphState={graphState} 
-              isRunning={false} 
-            />
-          ) : (
-            <EnhancedResponseDisplay 
-              graphState={graphState} 
-              isRunning={isRunning}
-              currentStep={getCurrentStep(graphState)}
-            />
-          )}
+          <EnhancedResponseDisplay 
+            graphState={graphState || {} as GraphState} 
+            isRunning={isRunning}
+            currentStep={graphState ? getCurrentStep(graphState) : 'Processing'}
+          />
         </Card>
       </div>
 

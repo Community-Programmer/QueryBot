@@ -67,46 +67,61 @@ export const runQuery = async (
 
     const decoder = new TextDecoder();
 
+    // Buffer to hold partial chunks between reads so we only try to parse complete SSE events
+    let buffer = '';
+
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n\n');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              
-              // Handle different data formats from the stream
-              // The data might be nested in different structures depending on the streaming mode
-              let updateData: Partial<GraphState> = {};
-              
-              // Direct data from finalize_response or other nodes
-              if (data.answer || data.chart_image_base64 || data.insights || data.formatted_table) {
-                updateData = data;
-              }
-              // Node-specific data (like from generate_chart, format_table, etc.)
-              else if (data.node && data.data) {
-                (updateData as any)[data.node] = data.data;
-              }
-              // If data has a specific node key, use that
-              else if (Object.keys(data).length === 1) {
-                const key = Object.keys(data)[0];
-                updateData[key as keyof GraphState] = data[key];
-              }
-              // Otherwise, spread the data as is
-              else {
-                updateData = data;
-              }
-              
-              onUpdate(updateData as GraphState);
-            } catch (parseError) {
-              console.error('Error parsing SSE data:', parseError, 'Raw line:', line);
-              // Continue processing other lines instead of failing completely
+        buffer += chunk;
+
+        // SSE events are separated by a blank line (\n\n). Split into complete events.
+        const parts = buffer.split('\n\n');
+
+        // The last part may be incomplete, keep it in the buffer for the next read
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          // Each part may contain multiple lines starting with 'data: '
+          const lines = part.split('\n');
+
+          // Collect all data: lines for this event (they may be split across multiple data: lines)
+          const dataLines = lines
+            .filter((l) => l.startsWith('data:'))
+            .map((l) => l.slice(5).trim());
+
+          if (dataLines.length === 0) continue;
+
+          const dataStr = dataLines.join('\n');
+
+          // Some streams send a sentinel like [DONE]
+          if (dataStr.trim() === '[DONE]') continue;
+
+          try {
+            const data = JSON.parse(dataStr);
+
+            // Handle different data formats from the stream
+            let updateData: Partial<GraphState> = {};
+
+            if (data.answer || data.chart_image_base64 || data.insights || data.formatted_table) {
+              updateData = data;
+            } else if (data.node && data.data) {
+              (updateData as any)[data.node] = data.data;
+            } else if (Object.keys(data).length === 1) {
+              const key = Object.keys(data)[0];
+              updateData[key as keyof GraphState] = data[key];
+            } else {
+              updateData = data;
             }
+
+            onUpdate(updateData as GraphState);
+          } catch (parseError) {
+            // Log the problematic event for debugging but continue; keep buffer logic to avoid
+            // trying to parse partial JSON.
+            console.error('Error parsing SSE data:', parseError, 'Event chunk:', dataStr.slice(0, 200));
           }
         }
       }

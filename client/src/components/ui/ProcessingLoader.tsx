@@ -10,6 +10,24 @@ const ProcessingLoader: React.FC<ProcessingLoaderProps> = ({
   currentStep = 'Processing', 
   message = 'Analyzing your question...' 
 }) => {
+  const stepOrder = [
+    'classify_question',
+    'parse_question', 
+    'generate_sql',
+    'validate_and_fix_sql',
+    'execute_sql',
+    'format_results',
+    'choose_visualization',
+    'generate_chart',
+    'generate_insights',
+    'finalize_response'
+  ];
+
+  const getCurrentStepIndex = () => {
+    const index = stepOrder.indexOf(currentStep.toLowerCase());
+    return index === -1 ? 0 : index;
+  };
+
   const getStepIcon = (step: string) => {
     switch (step.toLowerCase()) {
       case 'classify_question':
@@ -38,6 +56,9 @@ const ProcessingLoader: React.FC<ProcessingLoaderProps> = ({
       .replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const currentStepIndex = getCurrentStepIndex();
+  const progressPercentage = Math.round(((currentStepIndex + 1) / stepOrder.length) * 100);
+
   return (
     <div className="flex flex-col items-center justify-center flex-1 text-[#333A3F] py-12">
       <div className="flex flex-col items-center space-y-6 max-w-md mx-auto">
@@ -50,13 +71,25 @@ const ProcessingLoader: React.FC<ProcessingLoaderProps> = ({
         </div>
 
         {/* Status text */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
           <h3 className="text-lg font-semibold text-[#009B72]">
             {formatStepName(currentStep)}
           </h3>
           <p className="text-sm text-gray-600 max-w-xs">
             {message}
           </p>
+          
+          {/* Progress indicator */}
+          <div className="flex items-center justify-center space-x-2 mt-2">
+            <span className="text-xs text-gray-500">Step {currentStepIndex + 1} of {stepOrder.length}</span>
+            <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[#009B72] rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+            <span className="text-xs text-gray-500">{progressPercentage}%</span>
+          </div>
         </div>
 
         {/* Progress dots */}

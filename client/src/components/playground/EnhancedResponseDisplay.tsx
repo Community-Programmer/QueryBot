@@ -31,8 +31,8 @@ const EnhancedResponseDisplay: React.FC<EnhancedResponseDisplayProps> = ({
   const isNotDataRelated = graphState.data_narrative === "Question is not related to data analysis" ||
     (graphState.insights && graphState.insights.includes('No insights available - question not data-related'));
 
-  // Show processing loader when running
-  if (isRunning && !hasAnswer && !isIrrelevantQuestion) {
+  // Show processing loader when running - continue until all steps are complete
+  if (isRunning && !isIrrelevantQuestion) {
     const stepMessages = {
       'classify_question': 'Analyzing your question type and requirements...',
       'parse_question': 'Breaking down your question into components...',
