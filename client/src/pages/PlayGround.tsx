@@ -35,15 +35,22 @@ const PlayGround: React.FC = () => {
 
     setIsUploading(true);
     setFileName(file.name);
+    // Clear previous database UUID when uploading a new file
+    setDatabaseUuid(null);
 
     try {
       const uuid = await uploadDatabase(file);
       setDatabaseUuid(uuid);
-      setChatMessages([{ type: 'system', text: `File "${file.name}" uploaded successfully!` }]);
+      setChatMessages([{ 
+        type: 'system', 
+        text: `File "${file.name}" uploaded successfully! You can now ask questions about your data.` 
+      }]);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown error';
       setChatMessages([{ type: 'error', text: `Failed to upload file: ${message}` }]);
+      // Reset fileName if upload failed
+      setFileName('');
     } finally {
       setIsUploading(false);
     }
@@ -147,16 +154,20 @@ const PlayGround: React.FC = () => {
 
   // Quick actions
   const handleGetOverview = async () => {
-    if (!databaseUuid && !fileName)
-      return setChatMessages([...chatMessages, { type: 'error', text: 'Please upload a file first.' }]);
+    if (!databaseUuid) {
+      setChatMessages([...chatMessages, { type: 'error', text: 'Please upload a file first.' }]);
+      return;
+    }
     const question = 'Give me an overview of this dataset';
     setChatMessages([...chatMessages, { type: 'user', text: question }]);
     await run(question);
   };
 
   const handleAnalyzeData = async () => {
-    if (!databaseUuid && !fileName)
-      return setChatMessages([...chatMessages, { type: 'error', text: 'Please upload a file first.' }]);
+    if (!databaseUuid) {
+      setChatMessages([...chatMessages, { type: 'error', text: 'Please upload a file first.' }]);
+      return;
+    }
     const question = 'Analyze this data and show me the key insights';
     setChatMessages([...chatMessages, { type: 'user', text: question }]);
     await run(question);
@@ -164,6 +175,10 @@ const PlayGround: React.FC = () => {
 
   const handleAskQuestion = async () => {
     if (!chatInput.trim()) return;
+    if (!databaseUuid) {
+      setChatMessages([...chatMessages, { type: 'error', text: 'Please upload a file first.' }]);
+      return;
+    }
     const userMessage = { type: 'user', text: chatInput };
     const currentInput = chatInput;
     setChatMessages([...chatMessages, userMessage]);
@@ -246,14 +261,25 @@ const PlayGround: React.FC = () => {
       {/* Left Panel */}
       <div className="flex flex-col gap-5 w-full lg:w-[420px] flex-shrink-0 h-full lg:h-auto">
         {/* Upload */}
-        <Card className="p-0 bg-white border-2 border-dashed border-[#DDF7E3] rounded-2xl overflow-hidden hover:border-[#009B72] hover:shadow-lg transition-all duration-300">
+        <Card className={`p-0 bg-white border-2 border-dashed rounded-2xl overflow-hidden transition-all duration-300 ${
+          databaseUuid 
+            ? 'border-[#009B72] bg-[#DDF7E3]' 
+            : 'border-[#DDF7E3] hover:border-[#009B72] hover:shadow-lg'
+        }`}>
           <label
             htmlFor="csv-upload"
-            className="flex items-center justify-center gap-3 p-7 cursor-pointer hover:bg-[#DDF7E3] transition-colors"
+            className={`flex items-center justify-center gap-3 p-7 cursor-pointer transition-colors ${
+              databaseUuid ? 'bg-[#DDF7E3]' : 'hover:bg-[#DDF7E3]'
+            }`}
           >
             <Upload className="w-6 h-6 text-[#009B72]" />
             <span className="text-lg font-semibold text-[#333A3F]">
-              {isUploading ? 'Uploading...' : fileName || 'Upload CSV/SQLite'}
+              {isUploading 
+                ? 'Uploading...' 
+                : fileName 
+                  ? `${fileName} ${databaseUuid ? '✓' : ''}`
+                  : 'Upload CSV/SQLite'
+              }
             </span>
           </label>
           <input id="csv-upload" type="file" accept=".csv,.sqlite" onChange={handleFileUpload} className="hidden" />
@@ -263,16 +289,16 @@ const PlayGround: React.FC = () => {
         <div className="flex gap-3 flex-col sm:flex-row">
           <Button
             onClick={handleGetOverview}
-            disabled={isRunning}
-            className="flex-1 h-14 bg-white border border-[#DDF7E3] text-[#333A3F] font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[#009B72] hover:text-white transition-all"
+            disabled={isRunning || !databaseUuid}
+            className="flex-1 h-14 bg-white border border-[#DDF7E3] text-[#333A3F] font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[#009B72] hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FileText className="w-5 h-5" />
             Get Dataset Overview
           </Button>
           <Button
             onClick={handleAnalyzeData}
-            disabled={isRunning}
-            className="flex-1 h-14 bg-white border border-[#DDF7E3] text-[#333A3F] font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[#009B72] hover:text-white transition-all"
+            disabled={isRunning || !databaseUuid}
+            className="flex-1 h-14 bg-white border border-[#DDF7E3] text-[#333A3F] font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-[#009B72] hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <TrendingUp className="w-5 h-5" />
             Analyze Data
@@ -323,8 +349,8 @@ const PlayGround: React.FC = () => {
             />
             <Button
               onClick={handleAskQuestion}
-              disabled={!chatInput.trim() || isRunning}
-              className="h-12 px-7 bg-[#009B72] text-white rounded-xl hover:bg-[#007d5c] transition-all"
+              disabled={!chatInput.trim() || isRunning || !databaseUuid}
+              className="h-12 px-7 bg-[#009B72] text-white rounded-xl hover:bg-[#007d5c] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-[18px] h-[18px]" />
               {isRunning ? 'Running...' : 'Ask'}

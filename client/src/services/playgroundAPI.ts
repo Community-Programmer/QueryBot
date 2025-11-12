@@ -1,8 +1,8 @@
 import { config } from '@/config/env';
-import type { GraphState, UploadResponse } from '@/types/playground';
+import type { GraphState } from '@/types/playground';
 
 // SQLite Server API (port 3001)
-const SQLITE_SERVER_URL = 'http://localhost:3001';
+const SQLITE_SERVER_URL = config.SQLITE_API_BASE_URL;
 
 // Flask Server API (port 5000) - using config
 const FLASK_SERVER_URL = config.API_BASE_URL;
@@ -25,8 +25,19 @@ export const uploadDatabase = async (file: File): Promise<string> => {
       throw new Error(errorData.error || `Upload failed with status ${response.status}`);
     }
 
-    const data: UploadResponse = await response.json();
-    return data.uuid;
+    const responseData = await response.json();
+    
+    // Handle the server response structure: { success: true, data: { uuid: "..." } }
+    if (responseData.success && responseData.data && responseData.data.uuid) {
+      return responseData.data.uuid;
+    }
+    
+    // Fallback for older response format: { uuid: "..." }
+    if (responseData.uuid) {
+      return responseData.uuid;
+    }
+    
+    throw new Error('Invalid response format: missing UUID');
   } catch (error) {
     console.error('Error uploading file:', error);
     throw new Error(error instanceof Error ? error.message : 'Upload failed');
@@ -41,7 +52,10 @@ export const runQuery = async (
   onUpdate: (data: GraphState) => void,
   databaseUuid?: string | null
 ): Promise<void> => {
-  const defaultDatabaseUuid = '921c838c-541d-4361-8c96-70cb23abd9f5';
+  // Ensure we have a valid database UUID from an uploaded file
+  if (!databaseUuid || databaseUuid.trim() === '') {
+    throw new Error('No database uploaded. Please upload a CSV or SQLite file first.');
+  }
 
   try {
     const response = await fetch(`${FLASK_SERVER_URL}/langgraph/run`, {
@@ -51,7 +65,7 @@ export const runQuery = async (
       },
       body: JSON.stringify({ 
         question, 
-        databaseUuid: databaseUuid || defaultDatabaseUuid 
+        databaseUuid: databaseUuid
       }),
     });
 
@@ -130,54 +144,6 @@ export const runQuery = async (
     }
   } catch (error) {
     console.error('Error in runQuery:', error);
-    throw new Error(error instanceof Error ? error.message : 'Query execution failed');
-  }
-};
-
-/**
- * Get database schema for a given UUID
- */
-export const getDatabaseSchema = async (uuid: string): Promise<string> => {
-  try {
-    const response = await fetch(`${SQLITE_SERVER_URL}/get-schema/${uuid}`, {
-      method: 'GET',
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to get schema with status ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.schema;
-  } catch (error) {
-    console.error('Error getting database schema:', error);
-    throw new Error(error instanceof Error ? error.message : 'Failed to get database schema');
-  }
-};
-
-/**
- * Execute a raw SQL query on the database
- */
-export const executeQuery = async (uuid: string, query: string): Promise<any[]> => {
-  try {
-    const response = await fetch(`${SQLITE_SERVER_URL}/execute-query`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ uuid, query }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Query execution failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.results;
-  } catch (error) {
-    console.error('Error executing query:', error);
     throw new Error(error instanceof Error ? error.message : 'Query execution failed');
   }
 };
