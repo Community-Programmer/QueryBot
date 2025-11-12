@@ -1,23 +1,44 @@
-// Graph state types for the playground streaming functionality
-
-export interface GraphState {
+// Core application state for processed data
+export interface CoreGraphState {
   question: string;
   uuid: string;
+  
+  // Final outputs
+  answer?: string;
+  chart_image_base64?: string;
+  chart_generation_error?: string;
+  insights?: string;
+  formatted_table?: string;
+  data_narrative?: string;
+  insights_error?: string;
+  
+  // Visualization info
+  visualization?: string;
+  visualization_reason?: string;
+  
+  // Question classification
+  question_type?: string;
+  requires_visualization?: boolean;
+  requires_table?: boolean;
+  
+  // Processing state
   parsed_question?: { [key: string]: any };
   unique_nouns?: string[];
   sql_query?: string;
   sql_valid?: boolean;
   sql_issues?: string;
   results?: any[];
-  answer?: string;
   error?: string;
-  visualization?: string;
-  visualization_reason?: string;
-  formatted_data_for_visualization?: { [key: string]: any };
-  
-  // Stream-specific properties
+}
+
+// Extended state for streaming and debugging
+export interface GraphState extends CoreGraphState {
+  // Stream-specific properties for workflow tracking
   run_id?: string;
   attempt?: number;
+  
+  // Node execution results (for debugging/workflow tracking)
+  classify_question?: any;
   parse_question?: any;
   get_unique_nouns?: any;
   generate_sql?: any;
@@ -25,7 +46,14 @@ export interface GraphState {
   execute_sql?: any;
   format_results?: any;
   choose_visualization?: any;
-  format_data_for_visualization?: any;
+  generate_chart?: any;
+  format_table?: any;
+  generate_insights?: any;
+  finalize_response?: any;
+  handle_irrelevant?: any;
+  
+  // Deprecated - kept for backward compatibility
+  formatted_data_for_visualization?: { [key: string]: any };
 }
 
 export interface UploadResponse {

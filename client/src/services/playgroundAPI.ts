@@ -79,9 +79,32 @@ export const runQuery = async (
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              onUpdate(data);
+              
+              // Handle different data formats from the stream
+              // The data might be nested in different structures depending on the streaming mode
+              let updateData: Partial<GraphState> = {};
+              
+              // Direct data from finalize_response or other nodes
+              if (data.answer || data.chart_image_base64 || data.insights || data.formatted_table) {
+                updateData = data;
+              }
+              // Node-specific data (like from generate_chart, format_table, etc.)
+              else if (data.node && data.data) {
+                (updateData as any)[data.node] = data.data;
+              }
+              // If data has a specific node key, use that
+              else if (Object.keys(data).length === 1) {
+                const key = Object.keys(data)[0];
+                updateData[key as keyof GraphState] = data[key];
+              }
+              // Otherwise, spread the data as is
+              else {
+                updateData = data;
+              }
+              
+              onUpdate(updateData as GraphState);
             } catch (parseError) {
-              console.error('Error parsing SSE data:', parseError);
+              console.error('Error parsing SSE data:', parseError, 'Raw line:', line);
               // Continue processing other lines instead of failing completely
             }
           }

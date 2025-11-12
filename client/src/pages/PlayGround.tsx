@@ -4,17 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 
-import { Stream } from '@/components/playground/Stream';
 import { Sidebar } from '@/components/playground/Sidebar';
+import EnhancedResponseDisplay from '@/components/playground/EnhancedResponseDisplay';
 import { uploadDatabase, runQuery } from '@/services/playgroundAPI';
 import type { GraphState } from '@/types/playground';
-
-// Chart components
-import PieChart from '@/components/graphs/PieChart';
-import BarGraph from '@/components/graphs/BarGraph';
-import LineGraph from '@/components/graphs/LineGraph';
-import ScatterPlot from '@/components/graphs/ScatterPlot';
-import HorizontalBarGraph from '@/components/graphs/HorizontalBarGraph';
 
 const PlayGround: React.FC = () => {
   const [fileName, setFileName] = useState('');
@@ -69,33 +62,71 @@ const PlayGround: React.FC = () => {
             setGraphState((prev) => {
               const newState = { ...(prev || {}), ...streamData };
 
-              if (streamData.parse_question) newState.parsed_question = streamData.parse_question;
-              if (streamData.get_unique_nouns) newState.unique_nouns = streamData.get_unique_nouns;
-              if (streamData.generate_sql) newState.sql_query = streamData.generate_sql;
-
-              if (streamData.validate_and_fix_sql) {
-                newState.sql_valid = streamData.validate_and_fix_sql.valid;
-                newState.sql_issues = streamData.validate_and_fix_sql.issues;
-              }
-
-              if (streamData.execute_sql) newState.results = streamData.execute_sql;
-
-              if (streamData.format_results) {
-                newState.answer =
-                  typeof streamData.format_results === 'object' && streamData.format_results?.answer
-                    ? streamData.format_results.answer
-                    : streamData.format_results;
-              }
-
-              if (streamData.choose_visualization) {
-                newState.visualization = streamData.choose_visualization.visualization;
-                newState.visualization_reason = streamData.choose_visualization.reason;
-              }
-
-              if (streamData.format_data_for_visualization) {
-                newState.formatted_data_for_visualization =
-                  streamData.format_data_for_visualization.formatted_data_for_visualization;
-              }
+              // Handle all streaming data - merge directly for simplicity
+              Object.keys(streamData).forEach(key => {
+                const value = (streamData as any)[key];
+                
+                if (key === 'classify_question' && typeof value === 'object' && value) {
+                  newState.classify_question = value;
+                  if (value.question_type) newState.question_type = value.question_type;
+                  if (value.requires_visualization !== undefined) newState.requires_visualization = value.requires_visualization;
+                  if (value.requires_table !== undefined) newState.requires_table = value.requires_table;
+                } 
+                else if (key === 'handle_irrelevant' && typeof value === 'object' && value) {
+                  newState.handle_irrelevant = value;
+                  // Handle irrelevant question response
+                  if (value.answer) newState.answer = value.answer;
+                  if (value.visualization) newState.visualization = value.visualization;
+                  if (value.visualization_reason) newState.visualization_reason = value.visualization_reason;
+                  if (value.chart_image_base64 !== undefined) newState.chart_image_base64 = value.chart_image_base64;
+                  if (value.insights) newState.insights = value.insights;
+                  if (value.formatted_table !== undefined) newState.formatted_table = value.formatted_table;
+                  if (value.data_narrative) newState.data_narrative = value.data_narrative;
+                }
+                else if (key === 'validate_and_fix_sql' && typeof value === 'object' && value) {
+                  newState.validate_and_fix_sql = value;
+                  if (value.valid !== undefined) newState.sql_valid = value.valid;
+                  if (value.issues) newState.sql_issues = value.issues;
+                }
+                else if (key === 'format_results') {
+                  newState.format_results = value;
+                  if (typeof value === 'object' && value?.answer) {
+                    newState.answer = value.answer;
+                  } else if (typeof value === 'string') {
+                    newState.answer = value;
+                  }
+                }
+                else if (key === 'choose_visualization' && typeof value === 'object' && value) {
+                  newState.choose_visualization = value;
+                  if (value.visualization) newState.visualization = value.visualization;
+                  if (value.reason) newState.visualization_reason = value.reason;
+                }
+                else if (key === 'generate_chart' && typeof value === 'object' && value) {
+                  newState.generate_chart = value;
+                  if (value.chart_image_base64 !== undefined) newState.chart_image_base64 = value.chart_image_base64;
+                  if (value.chart_generation_error !== undefined) newState.chart_generation_error = value.chart_generation_error;
+                }
+                else if (key === 'format_table' && typeof value === 'object' && value) {
+                  newState.format_table = value;
+                  if (value.formatted_table) newState.formatted_table = value.formatted_table;
+                }
+                else if (key === 'generate_insights' && typeof value === 'object' && value) {
+                  newState.generate_insights = value;
+                  if (value.insights) newState.insights = value.insights;
+                  if (value.insights_error) newState.insights_error = value.insights_error;
+                }
+                else if (key === 'finalize_response' && typeof value === 'object' && value) {
+                  newState.finalize_response = value;
+                  if (value.data_narrative) newState.data_narrative = value.data_narrative;
+                  if (value.chart_image_base64) newState.chart_image_base64 = value.chart_image_base64;
+                  if (value.insights) newState.insights = value.insights;
+                  if (value.formatted_table) newState.formatted_table = value.formatted_table;
+                }
+                else {
+                  // Direct assignment for simple values
+                  newState[key as keyof GraphState] = value;
+                }
+              });
 
               return newState;
             });
@@ -159,13 +190,43 @@ const PlayGround: React.FC = () => {
 
   const toggleSidebar = () => setShowSidebar(!showSidebar);
 
+  // Determine current processing step
+  const getCurrentStep = (state: GraphState): string => {
+    if (state.finalize_response) return 'finalize_response';
+    if (state.generate_insights) return 'generate_insights';
+    if (state.format_table) return 'format_table';
+    if (state.generate_chart) return 'generate_chart';
+    if (state.choose_visualization) return 'choose_visualization';
+    if (state.format_results) return 'format_results';
+    if (state.execute_sql) return 'execute_sql';
+    if (state.validate_and_fix_sql) return 'validate_and_fix_sql';
+    if (state.generate_sql) return 'generate_sql';
+    if (state.get_unique_nouns) return 'get_unique_nouns';
+    if (state.parse_question) return 'parse_question';
+    if (state.classify_question) return 'classify_question';
+    return 'Processing';
+  };
+
   const handleDownload = () => {
-    if (!graphState?.results) return;
-    const dataStr = JSON.stringify(graphState.results, null, 2);
+    if (!graphState) return;
+
+    const downloadData = {
+      question: graphState.question,
+      answer: graphState.answer,
+      visualization: graphState.visualization,
+      results: graphState.results,
+      insights: graphState.insights,
+      formatted_table: graphState.formatted_table,
+      data_narrative: graphState.data_narrative,
+      chart_available: !!graphState.chart_image_base64,
+      timestamp: new Date().toISOString()
+    };
+
+    const dataStr = JSON.stringify(downloadData, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
     const link = document.createElement('a');
     link.setAttribute('href', dataUri);
-    link.setAttribute('download', `query_results_${Date.now()}.json`);
+    link.setAttribute('download', `querybot_results_${Date.now()}.json`);
     link.click();
   };
 
@@ -178,31 +239,7 @@ const PlayGround: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Chart renderer
-  const renderChart = (vizType?: string, chartData?: any) => {
-    if (!vizType) return null;
-    const type = vizType.toLowerCase();
 
-    switch (type) {
-      case 'pie':
-      case 'pie_chart':
-        return <PieChart data={Array.isArray(chartData) ? chartData : []} />;
-      case 'bar':
-      case 'bar_chart':
-        return <BarGraph data={chartData} />;
-      case 'line':
-      case 'line_chart':
-        return <LineGraph data={chartData} />;
-      case 'scatter':
-      case 'scatter_plot':
-        return <ScatterPlot data={chartData} />;
-      case 'horizontal_bar':
-      case 'horizontal_bar_chart':
-        return <HorizontalBarGraph data={chartData} />;
-      default:
-        return <div className="text-red-500 p-4 text-center">Unknown visualization: {vizType}</div>;
-    }
-  };
 
   return (
     <div className="flex gap-6 p-6 min-h-screen bg-[#FAF9F6] max-w-[1920px] mx-auto flex-col lg:flex-row">
@@ -306,44 +343,29 @@ const PlayGround: React.FC = () => {
                 variant="ghost"
                 size="icon"
                 className="w-11 h-11 border border-[#DDF7E3] rounded-xl hover:bg-[#009B72]"
-                disabled={!graphState?.results}
+                disabled={!graphState || (!graphState.answer && !graphState.results && !graphState.insights && !graphState.formatted_table)}
               >
                 <Download className="w-5 h-5 text-[#333A3F]" />
               </Button>
             </div>
           </div>
 
-          {!graphState ? (
-            <div className="flex flex-col items-center justify-center flex-1 text-[#333A3F] opacity-40">
-              <FileText className="w-16 h-16 mb-4" />
-              <p>No data processed yet</p>
-              <p className="text-sm mt-2">Upload a file and ask a question to get started</p>
-            </div>
-          ) : graphState.formatted_data_for_visualization ? (
-            <div className="flex-1 p-7 overflow-hidden">
-              {graphState.answer && <div className="text-lg mb-4">{graphState.answer}</div>}
-              <div className="flex-1 flex items-center justify-center">
-                {renderChart(graphState.visualization, graphState.formatted_data_for_visualization)}
-              </div>
-            </div>
-          ) : graphState.answer ? (
-            <div className="flex-1 p-7 overflow-auto">
-              <div>{graphState.answer}</div>
-              {graphState.visualization_reason && (
-                <div className="text-sm mt-4 text-gray-500">
-                  <strong>Note:</strong> {graphState.visualization_reason}
-                </div>
-              )}
-              {graphState.error && (
-                <div className="text-sm mt-4 text-red-500">
-                  <strong>Error:</strong> {graphState.error}
-                </div>
-              )}
-            </div>
+          {!graphState || (!graphState.answer && !graphState.chart_image_base64 && !graphState.formatted_table && !graphState.insights && !graphState.handle_irrelevant && !isRunning) ? (
+            <EnhancedResponseDisplay 
+              graphState={graphState || {} as GraphState} 
+              isRunning={false} 
+            />
+          ) : (graphState.answer || graphState.chart_image_base64 || graphState.formatted_table || graphState.insights || graphState.handle_irrelevant) ? (
+            <EnhancedResponseDisplay 
+              graphState={graphState} 
+              isRunning={false} 
+            />
           ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <Stream graphState={graphState} />
-            </div>
+            <EnhancedResponseDisplay 
+              graphState={graphState} 
+              isRunning={isRunning}
+              currentStep={getCurrentStep(graphState)}
+            />
           )}
         </Card>
       </div>
