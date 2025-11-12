@@ -30,10 +30,15 @@ class QueryBotAgent:
             
         Returns:
             Dict containing:
-            - answer: Human-readable answer to the question
+            - answer: Human-readable answer to the question with insights and narrative
             - visualization: Recommended visualization type
             - visualization_reason: Explanation for the visualization choice
-            - formatted_data_for_visualization: Data formatted for visualization
+            - chart_image_path: Path to generated chart image file (if any)
+            - chart_generation_error: Error message if chart generation failed
+            - insights: Data insights with emoji indicators
+            - formatted_table: Formatted data table (if applicable)
+            - data_narrative: Narrative explanation of the data
+            - insights_error: Error message if insights generation failed
         """
         try:
             result = self.workflow_manager.run_sql_agent(question, database_uuid)
@@ -43,7 +48,12 @@ class QueryBotAgent:
                 "answer": f"I encountered an error while processing your question: {str(e)}",
                 "visualization": "none",
                 "visualization_reason": "Error occurred during processing",
-                "formatted_data_for_visualization": None
+                "chart_image_path": None,
+                "chart_generation_error": str(e),
+                "insights": "📊 Error generating insights.",
+                "formatted_table": None,
+                "data_narrative": "Unable to process due to error.",
+                "insights_error": str(e)
             }
     
     def get_workflow_graph(self):
@@ -61,7 +71,7 @@ def ask_question(question: str, database_uuid: str) -> Dict[str, Any]:
         database_uuid (str): UUID of the database
         
     Returns:
-        Dict with answer and visualization information
+        Dict with answer, chart image path, and visualization information
     """
     agent = QueryBotAgent()
     return agent.query(question, database_uuid)

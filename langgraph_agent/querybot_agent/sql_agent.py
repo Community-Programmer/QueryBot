@@ -251,39 +251,245 @@ For example:
         return {"answer": answer}
 
     def choose_visualization(self, state: dict) -> dict:
-        """Choose the best visualization type for the data."""
+        """
+        Choose the best visualization type based on intelligent data analysis.
+        Analyzes data structure, patterns, and question context to recommend optimal charts.
+        """
         results = state.get('results', [])
         question = state['question']
         
         if not results:
             return {"visualization": "none", "visualization_reason": "No data to visualize"}
         
+        # Analyze data structure and patterns
+        data_analysis = self._analyze_data_for_visualization(results, question)
+        
+        # Enhanced prompt with data analysis insights
         prompt = ChatPromptTemplate.from_messages([
-            ("system", '''You are a data visualization expert. Based on the question and the SQL results, choose the most appropriate visualization type from: bar, horizontal_bar, line, pie, scatter, none.
+            ("system", '''You are a data visualization expert specializing in matplotlib, seaborn, and pandas visualizations. 
+Based on the question, SQL results, and data analysis, choose the most appropriate visualization type.
 
-Consider the following:
-- bar/horizontal_bar: For categorical data comparisons
-- line: For trends over time or continuous data
-- pie: For showing parts of a whole (percentages/proportions)
-- scatter: For showing relationships between two continuous variables
-- none: If the data is not suitable for visualization
+Available visualization types and their optimal use cases:
+
+📊 CATEGORICAL DATA:
+- "bar": Vertical bars for comparing categories (good for <10 categories)
+- "horizontal_bar": Horizontal bars for long category names or many categories
+- "pie": For showing parts of a whole (best with 2-7 categories, avoid if many small slices)
+
+📈 CONTINUOUS/TIME DATA:
+- "line": Time series, trends, continuous progression
+- "area": Similar to line but emphasizes magnitude over time
+
+🔍 RELATIONSHIP DATA:
+- "scatter": Two continuous variables, correlation analysis
+- "bubble": Three variables (x, y, size)
+
+📋 DISTRIBUTION DATA:
+- "histogram": Distribution of single continuous variable
+- "box": Distribution comparison across categories
+- "violin": Distribution shape comparison
+
+🔥 SPECIALIZED:
+- "heatmap": Correlation matrices, pivot table data
+- "pair_plot": Multiple variable relationships
+- "count_plot": Frequency of categorical values
+
+DECISION CRITERIA:
+1. Data structure (categorical vs continuous)
+2. Number of variables (1, 2, 3+)
+3. Data size (few vs many points)
+4. Question intent (comparison, trend, distribution, relationship)
+5. Readability and clarity
 
 Respond in JSON format:
 {{
-    "visualization": "type",
-    "reason": "explanation"
+    "visualization": "chart_type",
+    "reason": "detailed explanation of why this chart type is optimal",
+    "seaborn_function": "sns.function_name (e.g., sns.barplot, sns.lineplot)",
+    "matplotlib_needed": "additional matplotlib styling needed"
 }}'''),
             ("human", '''Question: {question}
-Results (first 5 rows): {results}
 
-Choose the best visualization type.'''),
+SQL Results (first 10 rows): {results}
+
+Data Analysis:
+- Data shape: {data_shape}
+- Column types: {column_types}
+- Numeric columns: {numeric_columns}
+- Categorical columns: {categorical_columns}
+- Temporal indicators: {temporal_indicators}
+- Value ranges: {value_ranges}
+- Question keywords: {question_keywords}
+- Recommended focus: {focus_recommendation}
+
+Choose the optimal visualization type for this data:'''),
         ])
         
-        output_parser = JsonOutputParser()
-        response = self.llm_manager.invoke(prompt, question=question, results=str(results[:5]))
-        result = output_parser.parse(response)
+        try:
+            output_parser = JsonOutputParser()
+            response = self.llm_manager.invoke(
+                prompt, 
+                question=question, 
+                results=str(results[:10]),
+                **data_analysis
+            )
+            result = output_parser.parse(response)
+            
+            return {
+                "visualization": result.get("visualization", "none"),
+                "visualization_reason": result.get("reason", "Chart type selected based on data analysis"),
+                "seaborn_function": result.get("seaborn_function", "sns.barplot"),
+                "matplotlib_styling": result.get("matplotlib_needed", "Standard styling")
+            }
+            
+        except Exception as e:
+            # Fallback to simple rule-based selection
+            fallback_viz = self._fallback_visualization_selection(results, question)
+            return fallback_viz
+    
+    def _analyze_data_for_visualization(self, results: list, question: str) -> dict:
+        """
+        Analyze data structure and patterns to inform visualization choice.
         
-        return {
-            "visualization": result.get("visualization", "none"),
-            "visualization_reason": result.get("reason", "No specific reason provided")
-        }
+        Args:
+            results: SQL query results
+            question: User question
+            
+        Returns:
+            Dict with data analysis insights
+        """
+        if not results:
+            return {"data_shape": "empty", "column_types": [], "numeric_columns": 0, 
+                   "categorical_columns": 0, "temporal_indicators": [], "value_ranges": {},
+                   "question_keywords": [], "focus_recommendation": "none"}
+        
+        try:
+            # Basic data shape analysis
+            num_rows = len(results)
+            num_cols = len(results[0]) if results else 0
+            
+            # Analyze column types and patterns
+            column_analysis = self._analyze_columns(results)
+            
+            # Analyze question for visualization hints
+            question_analysis = self._analyze_question_intent(question)
+            
+            return {
+                "data_shape": f"{num_rows} rows × {num_cols} columns",
+                "column_types": column_analysis["types"],
+                "numeric_columns": column_analysis["numeric_count"],
+                "categorical_columns": column_analysis["categorical_count"],
+                "temporal_indicators": column_analysis["temporal_hints"],
+                "value_ranges": column_analysis["ranges"],
+                "question_keywords": question_analysis["keywords"],
+                "focus_recommendation": question_analysis["focus"]
+            }
+            
+        except Exception:
+            return {"data_shape": "analysis_failed", "column_types": [], "numeric_columns": 0,
+                   "categorical_columns": 0, "temporal_indicators": [], "value_ranges": {},
+                   "question_keywords": [], "focus_recommendation": "basic"}
+    
+    def _analyze_columns(self, results: list) -> dict:
+        """Analyze column characteristics for visualization selection."""
+        if not results:
+            return {"types": [], "numeric_count": 0, "categorical_count": 0, 
+                   "temporal_hints": [], "ranges": {}}
+        
+        try:
+            column_info = {"types": [], "numeric_count": 0, "categorical_count": 0,
+                          "temporal_hints": [], "ranges": {}}
+            
+            # Analyze each column
+            for col_idx in range(len(results[0])):
+                values = [row[col_idx] for row in results[:20] if row[col_idx] is not None]  # Sample first 20
+                
+                if not values:
+                    continue
+                
+                # Try to determine if numeric
+                try:
+                    numeric_values = [float(v) for v in values if str(v).replace('.', '').replace('-', '').isdigit()]
+                    if len(numeric_values) / len(values) > 0.7:  # 70% numeric
+                        column_info["types"].append("numeric")
+                        column_info["numeric_count"] += 1
+                        if numeric_values:
+                            column_info["ranges"][f"col_{col_idx}"] = f"{min(numeric_values):.2f} - {max(numeric_values):.2f}"
+                    else:
+                        column_info["types"].append("categorical")
+                        column_info["categorical_count"] += 1
+                        unique_count = len(set(str(v) for v in values))
+                        column_info["ranges"][f"col_{col_idx}"] = f"{unique_count} unique values"
+                except:
+                    column_info["types"].append("categorical")
+                    column_info["categorical_count"] += 1
+                
+                # Check for temporal hints
+                sample_str = str(values[0]).lower()
+                if any(hint in sample_str for hint in ['date', 'time', 'month', 'year', '2024', '2023']):
+                    column_info["temporal_hints"].append(f"col_{col_idx}")
+            
+            return column_info
+            
+        except Exception:
+            return {"types": ["unknown"], "numeric_count": 0, "categorical_count": 0,
+                   "temporal_hints": [], "ranges": {}}
+    
+    def _analyze_question_intent(self, question: str) -> dict:
+        """Analyze question to understand visualization intent."""
+        question_lower = question.lower()
+        
+        # Chart type keywords
+        chart_keywords = []
+        focus = "comparison"
+        
+        if any(word in question_lower for word in ['trend', 'over time', 'timeline', 'progression']):
+            chart_keywords.append("temporal")
+            focus = "trend_analysis"
+        elif any(word in question_lower for word in ['correlation', 'relationship', 'vs', 'compared to']):
+            chart_keywords.append("relationship")
+            focus = "correlation_analysis"
+        elif any(word in question_lower for word in ['distribution', 'spread', 'frequency']):
+            chart_keywords.append("distribution")
+            focus = "distribution_analysis"
+        elif any(word in question_lower for word in ['top', 'bottom', 'highest', 'lowest', 'ranking']):
+            chart_keywords.append("ranking")
+            focus = "ranking_comparison"
+        elif any(word in question_lower for word in ['total', 'sum', 'percentage', 'proportion']):
+            chart_keywords.append("aggregation")
+            focus = "part_to_whole"
+        
+        return {"keywords": chart_keywords, "focus": focus}
+    
+    def _fallback_visualization_selection(self, results: list, question: str) -> dict:
+        """Fallback rule-based visualization selection when AI analysis fails."""
+        if not results:
+            return {"visualization": "none", "visualization_reason": "No data available"}
+        
+        num_cols = len(results[0])
+        num_rows = len(results)
+        
+        # Simple rule-based logic
+        if num_cols == 2:
+            # Two columns - likely x,y data
+            if num_rows <= 10:
+                return {
+                    "visualization": "bar",
+                    "visualization_reason": "Two-column data with few rows - bar chart for comparison",
+                    "seaborn_function": "sns.barplot",
+                    "matplotlib_styling": "Standard bar styling"
+                }
+            else:
+                return {
+                    "visualization": "line", 
+                    "visualization_reason": "Two-column data with many rows - line chart for trend",
+                    "seaborn_function": "sns.lineplot",
+                    "matplotlib_styling": "Standard line styling"
+                }
+        else:
+            return {
+                "visualization": "bar",
+                "visualization_reason": "Default bar chart for multi-column categorical data",
+                "seaborn_function": "sns.barplot", 
+                "matplotlib_styling": "Standard styling"
+            }

@@ -11,6 +11,11 @@ dependencies = [
     "langgraph-cli[inmem]>=0.4.7",
     "python-dotenv>=1.2.1",
     "typing-extensions>=4.15.0",
+    "langchain-experimental>=0.0.35",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
 ]
 
 [dependency-groups]

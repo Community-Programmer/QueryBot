@@ -12,7 +12,12 @@ class OutputState(TypedDict):
     answer: str
     visualization: str
     visualization_reason: str
-    formatted_data_for_visualization: Optional[Dict[str, Any]]
+    chart_image_path: Optional[str]
+    chart_generation_error: Optional[str]
+    insights: Optional[str]
+    formatted_table: Optional[str]
+    data_narrative: Optional[str]
+    insights_error: Optional[str]
 
 class OverallState(InputState, OutputState):
     """Complete state that includes all intermediate states."""
@@ -23,3 +28,6 @@ class OverallState(InputState, OutputState):
     sql_issues: Optional[str]
     results: Optional[List[Any]]
     error: Optional[str]
+    question_type: Optional[str]  # chart, table, or general
+    requires_visualization: Optional[bool]
+    requires_table: Optional[bool]

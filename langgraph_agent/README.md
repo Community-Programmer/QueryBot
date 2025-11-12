@@ -1,209 +1,196 @@
-# QueryBot LangGraph Agent
+# Enhanced QueryBot - AI-Powered Data Analysis Agent
 
-A sophisticated SQL query and data visualization agent built with LangGraph and LangChain. This agent can understand natural language questions about databases, generate and execute SQL queries, and recommend appropriate visualizations with formatted data.
+A sophisticated LangGraph-based agent that transforms natural language questions into comprehensive data analysis, complete with insights, visualizations, and intelligent routing.
 
-## Features
+## 🚀 Key Features
 
-- **Natural Language Processing**: Understands and parses user questions about databases
-- **Smart SQL Generation**: Generates optimized SQL queries based on database schema and user questions
-- **Query Validation**: Validates and fixes SQL queries automatically
-- **Data Visualization**: Recommends appropriate visualization types (bar, line, pie, scatter plots)
-- **Data Formatting**: Formats query results for various visualization libraries
-- **Error Handling**: Robust error handling and user-friendly error messages
+### 🧠 Intelligent Question Classification
+- **Smart Routing**: Automatically classifies questions as chart, table, general, or irrelevant
+- **Context-Aware Processing**: Different workflows for different question types
+- **Polite Handling**: Professional responses for non-data-related questions
 
-## Architecture
+### 📊 Advanced Data Visualization
+- **Smart Chart Selection**: AI-powered visualization recommendations based on data analysis
+- **Seaborn & Matplotlib**: Professional-quality charts with modern styling
+- **Multiple Chart Types**: Line, bar, scatter, pie, heatmap, box plots, histograms
+- **Data-Driven Decisions**: Analyzes data structure, patterns, and question intent
 
-The agent is built using LangGraph for workflow orchestration and consists of several key components:
+### 💡 Automatic Insights Generation
+- **Data Analyst AI**: Generates key insights with statistical analysis
+- **Narrative Explanations**: Story-like data interpretations
+- **Pattern Recognition**: Identifies trends, anomalies, and correlations
+- **Professional Format**: Emoji-enhanced, bullet-pointed insights
 
-### Core Components
+### 📋 Smart Table Formatting
+- **Readable Tables**: Clean, structured data presentation
+- **Pandas Integration**: Advanced data manipulation capabilities
+- **Performance Optimized**: Handles large datasets efficiently
 
-- **WorkflowManager**: Orchestrates the entire workflow using LangGraph StateGraph
-- **SQLAgent**: Handles all SQL-related operations (parsing, generation, validation, execution)
-- **DataFormatter**: Formats data for different visualization types
-- **DatabaseManager**: Manages database connections and query execution
-- **LLMManager**: Handles interactions with OpenAI's GPT models
+### 🔄 Complex Graph Architecture
+- **Conditional Routing**: LangGraph with intelligent decision points
+- **Dynamic Processing**: Skips unnecessary steps based on question type
+- **Error Resilience**: Graceful failure handling throughout workflow
+- **Resource Efficiency**: Only processes what's needed
 
-### Workflow
+## 📈 Example Outputs
 
-1. **Parse Question**: Analyzes the user question and identifies relevant database tables/columns
-2. **Get Unique Nouns**: Extracts unique values from relevant columns to improve SQL accuracy
-3. **Generate SQL**: Creates SQL queries based on the parsed question and schema
-4. **Validate & Fix SQL**: Validates and corrects any issues in the generated SQL
-5. **Execute SQL**: Runs the query against the database
-6. **Format Results**: Converts raw results into human-readable answers
-7. **Choose Visualization**: Recommends the best visualization type for the data
-8. **Format Data**: Formats the data for the chosen visualization
+### Chart Question
+```
+📤 Question: "Show me sales by region"
 
-## Installation
+📋 Response:
+Based on your question 'Show me sales by region', I analyzed the regional sales data.
 
-1. Clone the repository and navigate to the project directory
-2. Install dependencies:
-   ```bash
-   pip install -e .
-   ```
+📖 Analysis: Sales data reveals strong performance in western markets, 
+likely driven by higher population density and marketing investments.
 
-3. Copy the environment file and configure it:
-   ```bash
-   cp .env.example .env
-   ```
+📊 Key Insights:
+• West region dominates with 34% of total sales ($2.3M)
+• East region follows with 28% ($1.9M) 
+• Sales dropped 12% in February across all regions
+• No strong correlation between region size and revenue
 
-4. Edit `.env` file with your configuration:
-   ```
-   OPENAI_API_KEY=your_openai_api_key_here
-   DB_ENDPOINT_URL=your_database_endpoint_url_here
-   ```
+📊 Chart generated successfully: charts/sales_by_region_20241112_143052.png
+```
 
-## Usage
+### Table Question
+```
+📤 Question: "List all high-value customers"
+
+📋 Data Table:
+Customer_Name    | Order_Value | Order_Date  
+-----------------|-------------|-------------
+Acme Corp        | $4,500      | 2024-11-01
+TechStart Inc    | $3,200      | 2024-11-05
+[... 15 rows total]
+
+📊 Key Insights:
+• 15 customers exceed $1000 threshold (12% of customer base)
+• Average high-value order: $1,847
+• Top customer: Acme Corp with $4,500 order
+```
+
+## 🛠️ Quick Start
+
+### Installation
+```bash
+# Clone the repository
+git clone <repository-url>
+cd QueryBot/langgraph_agent
+
+# Install dependencies
+uv sync
+
+# Set up environment variables
+cp .env.example .env
+# Add your OpenAI API key to .env
+```
 
 ### Basic Usage
-
 ```python
 from querybot_agent.agent import QueryBotAgent
 
 # Initialize the agent
 agent = QueryBotAgent()
 
-# Ask a question
-result = agent.query(
-    question="What are the top 5 selling products?",
-    database_uuid="your-database-uuid"
-)
+# Ask questions and get comprehensive analysis
+result = agent.query("Show me sales trends over time", "your-database-uuid")
 
-print(result)
-# Output:
-# {
-#     "answer": "Based on your question...",
-#     "visualization": "bar",
-#     "visualization_reason": "Bar chart is ideal for comparing quantities...",
-#     "formatted_data_for_visualization": {...}
-# }
+# Access rich response components
+print(result["answer"])           # Comprehensive answer with narrative
+print(result["insights"])         # Key insights with emojis
+print(result["data_narrative"])   # Story explanation
+print(result["formatted_table"])  # Table if applicable
+print(result["chart_image_path"]) # Chart location
 ```
 
-### Using the Convenience Function
-
+### Response Structure
 ```python
-from querybot_agent.agent import ask_question
-
-result = ask_question(
-    "Show me sales trends over the last 6 months",
-    "your-database-uuid"
-)
-```
-
-### LangGraph Cloud Deployment
-
-The `main.py` file exposes a `graph` object that can be deployed directly to LangGraph Cloud:
-
-```python
-from main import graph
-
-# The graph is ready for LangGraph Cloud deployment
-```
-
-## Supported Visualizations
-
-The agent can recommend and format data for the following visualization types:
-
-- **Bar Charts**: For categorical comparisons
-- **Horizontal Bar Charts**: For categorical comparisons with long labels
-- **Line Charts**: For trends over time or continuous data
-- **Pie Charts**: For showing parts of a whole
-- **Scatter Plots**: For showing relationships between variables
-
-## Data Format Examples
-
-### Bar Chart
-```json
 {
-  "labels": ["Product A", "Product B", "Product C"],
-  "values": [{"data": [100, 150, 200], "label": "Sales"}]
+    "answer": "Comprehensive response with narrative and insights",
+    "insights": "📊 Key Insights: • Point 1 • Point 2 • Point 3",
+    "data_narrative": "Story-like explanation of data patterns",
+    "formatted_table": "Readable table format (if applicable)", 
+    "chart_image_path": "path/to/generated/chart.png",
+    "visualization": "bar|line|scatter|pie|etc",
+    "visualization_reason": "Explanation for chart choice",
+    "chart_generation_error": None,
+    "insights_error": None
 }
 ```
 
-### Line Chart
-```json
-{
-  "xValues": ["Jan", "Feb", "Mar"],
-  "yValues": [{"data": [100, 120, 140], "label": "Revenue"}]
-}
+## 🎯 Advanced Features
+
+### Visualization Intelligence
+- **Data Structure Analysis**: Automatically detects numeric vs categorical data
+- **Pattern Recognition**: Identifies temporal, correlational, and distributional patterns
+- **Question Intent**: Analyzes question keywords for visualization hints
+- **Seaborn Integration**: Uses appropriate seaborn functions for optimal charts
+
+### Processing Workflow
+```
+START → classify_question → is_relevant?
+  ├─ irrelevant → polite_redirect → END  
+  └─ relevant → SQL_processing → should_generate_chart?
+                                 ├─ yes → enhanced_chart
+                                 └─ no → skip_chart
+                                 ↓
+                               should_format_table?
+                                 ├─ yes → format_table
+                                 └─ no → skip_table  
+                                 ↓
+                               generate_insights → finalize → END
 ```
 
-### Scatter Plot
-```json
-{
-  "series": [{
-    "data": [{"x": 10, "y": 20, "id": 1}, {"x": 15, "y": 25, "id": 2}],
-    "label": "Data Points"
-  }]
-}
+### Chart Types Supported
+- **Line Charts**: Time series, trends, continuous data
+- **Bar Charts**: Categorical comparisons, rankings
+- **Scatter Plots**: Relationships, correlations
+- **Pie Charts**: Proportions, parts-of-whole
+- **Heatmaps**: Correlation matrices, pivot data
+- **Box Plots**: Distribution analysis
+- **Histograms**: Single variable distributions
+
+## 🔧 Technical Architecture
+
+### Core Components
+- `question_classifier.py`: AI-powered question analysis and routing
+- `insights_generator.py`: Data insights and narrative generation
+- `response_finalizer.py`: Output combination and error handling
+- `sql_agent.py`: Enhanced SQL processing with smart visualization
+- `chart_generator.py`: Advanced chart creation with seaborn/matplotlib
+
+### Dependencies
+- **LangGraph**: Complex workflow orchestration
+- **LangChain**: LLM integration and prompting
+- **Pandas**: Data manipulation and analysis
+- **Seaborn/Matplotlib**: Professional data visualization
+- **OpenAI**: Language model for analysis and insights
+
+## 🎉 Benefits
+
+✅ **Acts like a data analyst**: Provides insights, not just charts  
+✅ **Intelligent routing**: Processes questions appropriately  
+✅ **Comprehensive outputs**: Rich, multi-faceted responses  
+✅ **Professional handling**: Polite management of irrelevant queries  
+✅ **Flexible architecture**: Easy to extend and maintain  
+✅ **Error resilient**: Graceful failure handling  
+✅ **Performance optimized**: Conditional processing saves resources  
+
+## 🧪 Testing
+
+```bash
+# Run comprehensive tests
+uv run python test_enhanced_querybot.py
+
+# See example usage
+uv run python enhanced_example_usage.py
 ```
 
-## Configuration
+## 📝 License
 
-### Environment Variables
+[Add your license information here]
 
-- `OPENAI_API_KEY`: Your OpenAI API key for GPT model access
-- `DB_ENDPOINT_URL`: The base URL for your database API endpoint
+---
 
-### Database API Requirements
-
-The agent expects a database API with the following endpoints:
-
-- `GET /get-schema/{uuid}`: Returns database schema
-- `POST /execute-query`: Executes SQL queries
-
-Expected request/response format:
-```json
-// POST /execute-query
-{
-  "uuid": "database-uuid",
-  "query": "SELECT * FROM products"
-}
-
-// Response
-{
-  "results": [["Product A", 100], ["Product B", 150]]
-}
-```
-
-## Development
-
-### Project Structure
-
-```
-querybot_agent/
-├── __init__.py
-├── agent.py              # Main agent interface
-├── workflow_manager.py   # LangGraph workflow orchestration
-├── sql_agent.py         # SQL operations
-├── data_formatter.py    # Data formatting for visualizations
-├── llm_manager.py       # LLM interactions
-├── database_manager.py  # Database operations
-├── graph_instructions.py # Visualization format templates
-└── utils/
-    ├── __init__.py
-    ├── state.py         # State definitions
-    └── nodes.py         # Additional node functions (if needed)
-```
-
-### Adding New Visualization Types
-
-1. Add the new visualization instructions to `graph_instructions.py`
-2. Update the `_format_other_visualizations` method in `data_formatter.py`
-3. Update the visualization selection logic in `sql_agent.py`
-
-## Error Handling
-
-The agent includes comprehensive error handling:
-
-- Database connection errors
-- SQL syntax errors
-- API timeout errors
-- Invalid question formats
-- Missing environment variables
-
-All errors are gracefully handled and return user-friendly error messages.
-
-## License
-
-This project is part of the QueryBot system for natural language database querying and visualization.
+*Enhanced QueryBot provides a complete data analysis experience, combining LangGraph's conditional routing with intelligent insights generation to deliver professional, analyst-quality responses.*

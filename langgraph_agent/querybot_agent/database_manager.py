@@ -3,11 +3,12 @@ import os
 from typing import List, Any
 
 
+
 class DatabaseManager:
     """Manages database interactions for the QueryBot agent."""
     
     def __init__(self):
-        self.endpoint_url = os.getenv("DB_ENDPOINT_URL")
+        self.endpoint_url = 'http://localhost:3001'
 
     def get_schema(self, uuid: str) -> str:
         """Retrieve the database schema."""
