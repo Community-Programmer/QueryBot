@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  querybot-agent:
+    build: .
+    container_name: querybot-langgraph
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./generated_charts:/app/generated_charts
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - chart-executor
+    command: ["langgraph", "dev", "--host", "0.0.0.0", "--port", "8000"]
+
+  chart-executor:
+    build:
+      context: ./querybot_agent
+      dockerfile: Dockerfile.chart-executor
+    image: querybot-chart-executor
+    container_name: querybot-chart-base
+    command: ["echo", "Chart executor image built"]
+
+volumes:
+  charts_data:
+    driver: local

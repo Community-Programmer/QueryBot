@@ -1,10 +1,11 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
+
 class LLMManager:
     """Manages LLM interactions for the QueryBot agent."""
     
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+        self.llm = ChatGroq(model="moonshotai/kimi-k2-instruct-0905", temperature=0)
 
     def invoke(self, prompt: ChatPromptTemplate, **kwargs) -> str:
         """Invoke the LLM with a prompt and return the response content."""

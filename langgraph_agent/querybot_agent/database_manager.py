@@ -17,7 +17,6 @@ class DatabaseManager:
                 f"{self.endpoint_url}/get-schema/{uuid}"
             )
             response.raise_for_status()
-            print(response.json())
             return response.json()['schema']
         except requests.RequestException as e:
             raise Exception(f"Error fetching schema: {str(e)}")

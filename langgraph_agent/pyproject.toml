@@ -17,6 +17,7 @@ dependencies = [
     "pandas>=2.0.0",
     "numpy>=1.24.0",
     "langchain-google-genai>=3.0.2",
+    "langchain-groq>=1.0.0",
 ]
 
 [dependency-groups]

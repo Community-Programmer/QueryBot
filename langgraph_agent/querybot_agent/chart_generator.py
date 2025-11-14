@@ -1,19 +1,20 @@
 """
-Chart Generator Module - Uses Python REPL to generate visualizations locally.
+Chart Generator Module - Uses Docker containers to generate visualizations in complete isolation.
 
 
 This module contains tools and agents for generating charts using matplotlib,
-seaborn, pandas, and numpy, and returning them as base64 encoded data.
+seaborn, pandas, and numpy in completely isolated Docker containers for maximum security.
+Charts are returned as base64 encoded data.
 """
 
 
 from typing import Annotated, Dict, Any
 from langchain_core.tools import tool
-from langchain_experimental.utilities import PythonREPL
 from langchain_core.messages import BaseMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
 from langgraph.graph import END
 from querybot_agent.llm_manager import LLMManager
+from querybot_agent.docker_code_executor import DockerPythonREPL
 import os
 import uuid
 import base64
@@ -22,24 +23,42 @@ from datetime import datetime
 
 
 class ChartGenerator:
-    """Generates charts locally using Python REPL and returns them as base64 encoded data."""
+    """Generates charts in Docker containers and returns them as base64 encoded data."""
     
     def __init__(self):
         self.llm_manager = LLMManager()
-        self.repl = PythonREPL()
+        self.repl = DockerPythonREPL(timeout=120)  # Increased timeout for Docker overhead
         self.charts_dir = "generated_charts"
         # Create charts directory if it doesn't exist
         if not os.path.exists(self.charts_dir):
             os.makedirs(self.charts_dir)
+        
+        # Validate and build Docker environment on initialization
+        self._validate_docker_environment()
+    
+    def _validate_docker_environment(self):
+        """Validate and build Docker environment for chart generation."""
+        try:
+            if not self.repl.validate_installation():
+                print("Building Docker image for chart generation...")
+                if self.repl.build_image():
+                    print("Docker image built successfully")
+                else:
+                    print("Warning: Failed to build Docker image. Chart generation may not work.")
+        except Exception as e:
+            print(f"Warning: Could not validate Docker environment: {e}")
     
     def create_chart_agent(self):
         """Create a ReAct agent specialized for chart generation."""
         
         # Create the tool as a proper function
         @tool
-        def python_repl_tool(code: Annotated[str, "The python code to execute to generate your chart."]) -> str:
+        def docker_python_executor(code: Annotated[str, "The python code to execute to generate your chart."]) -> str:
             """
-            Execute Python code using a Python REPL (Read-Eval-Print Loop).
+            Execute Python code using a Docker container for complete isolation.
+            
+            This tool runs Python code in a completely isolated Docker container
+            with no network access and limited resources for maximum security.
             
             Args:
                 code (str): The Python code to execute for chart generation.
@@ -48,72 +67,89 @@ class ChartGenerator:
                 str: The result of the executed code or an error message if execution fails.
             """
             try:
-                result = self.repl.run(code)
+                result = self.repl.run(code, output_dir=self.charts_dir)
             except BaseException as e:
-                return f"Failed to execute. Error: {repr(e)}"
+                return f"Failed to execute in Docker container. Error: {repr(e)}"
             
-            result_str = f"Successfully executed:\n```python\n{code}\n```\nStdout: {result}"
+            result_str = f"Successfully executed in Docker container:\n```python\n{code}\n```\nOutput: {result}"
             return result_str + "\n\nIf you have completed the chart generation task, respond with FINAL ANSWER."
         
-        chart_task = """Create clear and visually appealing charts using matplotlib, seaborn, pandas, and numpy. Follow these rules:
+        chart_task = """Create clear and visually appealing charts using matplotlib, seaborn, pandas, and numpy in a DOCKER CONTAINER environment. Follow these rules:
 
 
-1. **Setup Environment**: Import required libraries at the beginning:
-    - import pandas as pd
-    - import numpy as np 
-    - import matplotlib.pyplot as plt
-    - import seaborn as sns
+1. **IMPORTANT - Docker Container Environment**: 
+    - Your code will run in a completely isolated Docker container with no network access
+    - Use matplotlib.use('Agg') backend for non-interactive plotting (this is already set)
+    - All output files MUST be saved to /app/output directory
+    - The container has limited resources (512MB RAM, 1 CPU)
+    - Execution timeout is 2 minutes
 
 
-2. **Styling**: Apply these styles for professional charts:
+2. **Setup Environment**: The container already has these packages installed:
+    - pandas, numpy, matplotlib, seaborn, Pillow
+    - Import them normally: import pandas as pd, etc.
+    - matplotlib backend is already set to 'Agg'
+    - warnings are automatically filtered
+
+
+3. **Styling**: Apply these styles for professional charts:
     - sns.set_context("notebook") for readable text
     - sns.set_theme() or sns.set_style("whitegrid") for clean appearance
     - Use accessible color palettes like sns.color_palette("husl")
 
 
-3. **Chart Types**: Choose appropriate visualizations:
+4. **Chart Types**: Choose appropriate visualizations:
     - Line plots: sns.lineplot() for trends over time
-    - Bar plots: sns.barplot() for categorical comparisons  
+    - Bar plots: sns.barplot() for categorical comparisons  
     - Scatter plots: sns.scatterplot() for relationships between variables
     - Heatmaps: sns.heatmap() for correlation matrices
 
 
-4. **Professional Formatting**:
+5. **Professional Formatting**:
     - Add meaningful titles using plt.title()
     - Label axes with units using plt.xlabel() and plt.ylabel()
     - Add legends when needed using plt.legend()
     - Ensure chart width is no more than 1000px using plt.figure(figsize=(10, 6))
 
 
-5. **Data Enhancement**:
+6. **Data Enhancement**:
     - Annotate key points with plt.annotate() when relevant
     - Use appropriate tick formatting for axes
     - Handle missing data appropriately
 
 
-6. **File Saving**: 
+7. **Error Handling**:
+    - Wrap data processing in try-except blocks
+    - Validate data before visualization
+    - Print informative error messages if issues occur
+
+
+8. **File Saving - CRITICAL**: 
     - Save charts as high-quality PNG files using plt.savefig()
     - Use bbox_inches='tight' and dpi=300 for quality
-    - Generate unique filenames using timestamps or UUIDs
-    - Save to the 'generated_charts' directory
+    - MUST save to /app/output directory (e.g., '/app/output/chart.png')
+    - Create full file path: '/app/output/' + filename
+    - Use os.makedirs('/app/output', exist_ok=True) if needed
 
 
-7. **Final Steps**:
-    - Always call plt.show() to display the chart
-    - Clear the figure with plt.clf() or plt.close() after saving
+9. **Final Steps**:
+    - Always use plt.close() after saving to free memory in container
+    - Do NOT call plt.show() in Docker container environment
+    - Print confirmation message when chart is saved successfully
+    - Include the full file path in success message
 
 
-Goal: Produce accurate, engaging, and professional charts that are saved as high-quality image files.
+Goal: Produce accurate, engaging, and professional charts that are saved as high-quality image files in the Docker container's /app/output directory.
 """
 
 
         # Get the LLM from LLMManager
         llm = self.llm_manager.llm
         
-        # Create the agent with the Python REPL tool
+        # Create the agent with the Docker Python executor tool
         chart_agent = create_react_agent(
             llm,
-            [python_repl_tool],
+            [docker_python_executor],
             prompt=self._make_system_prompt(chart_task)
         )
         
@@ -130,9 +166,10 @@ Goal: Produce accurate, engaging, and professional charts that are saved as high
         """
         return (
             "You are a data visualization expert, specializing in creating professional charts and graphs."
-            " Use the provided Python REPL tool to generate high-quality visualizations."
+            " Use the provided Docker Python executor tool to generate high-quality visualizations in completely isolated Docker containers."
+            " The code you write will be executed in a secure Docker container with no network access and limited resources."
             " Your goal is to create clear, informative, and visually appealing charts that effectively"
-            " communicate the data insights. Always save your charts as image files."
+            " communicate the data insights. Always save your charts as image files to the /app/output directory."
             " If you successfully complete the chart generation task,"
             " prefix your response with FINAL ANSWER so the system knows to stop."
             f"\n{suffix}"
@@ -243,21 +280,23 @@ Please execute this code to generate and save the chart. Make sure to follow all
                 pass
         
         code_template = f"""
+# Docker container execution - packages already available
 import pandas as pd
 import numpy as np
-import matplotlib
-matplotlib.use('Agg') # Use non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
-import warnings
-warnings.filterwarnings('ignore')
+import os
 
+# matplotlib backend is already set to 'Agg' in container
+# warnings are already filtered
 
 # Set up professional styling
 plt.style.use('default')
 sns.set_theme(style="whitegrid", palette="husl")
 sns.set_context("notebook", font_scale=1.2, rc={{"lines.linewidth": 2}})
 
+# Ensure output directory exists
+os.makedirs('/app/output', exist_ok=True)
 
 # Data preparation
 data = {results}
@@ -505,19 +544,13 @@ plt.xticks(rotation=45, ha='right')
 # Final styling and save
 plt.tight_layout()
 
+# Save to Docker container output directory
+output_path = '/app/output/{os.path.basename(save_path)}'
+plt.savefig(output_path, dpi=300, bbox_inches='tight', 
+           facecolor='white', edgecolor='none')
+plt.close()  # Close to free memory in container
 
-# Ensure the directory exists
-import os
-os.makedirs(os.path.dirname('{save_path}'), exist_ok=True)
-
-
-# Save with high quality
-plt.savefig('{save_path}', dpi=300, bbox_inches='tight', 
-           facecolor='white', edgecolor='none')
-plt.close()  # Close to free memory
-
-
-print(f"Enhanced chart saved successfully to: {save_path}")
+print(f"Chart saved successfully to container: {{output_path}}")
 print(f"Chart type: {visualization}")
 print(f"Used seaborn function approach: {seaborn_func}")
 """

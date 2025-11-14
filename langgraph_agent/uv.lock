@@ -701,6 +701,23 @@ wheels = [
 ]
 
 [[package]]
+name = "groq"
+version = "0.34.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8d/a8/a66425c56936feafd1afd94158ad4867e64c98b7e96f212913f4830f2ca9/groq-0.34.0.tar.gz", hash = "sha256:b0d8b9eeb30c06e1596adf7f0139d9ad73490ece14df8e3a68889f7b419df63c", size = 143418, upload-time = "2025-11-12T20:50:53.742Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/4b/c2ca8254d2a99adc0ad9f95b62a11ca812c323e357fcdce4abe272005520/groq-0.34.0-py3-none-any.whl", hash = "sha256:0ffe7d87dd589e8ec3fb71860c840c6a9608a812939cbd5b02178e98c0d849f7", size = 135986, upload-time = "2025-11-12T20:50:52.243Z" },
+]
+
+[[package]]
 name = "grpcio"
 version = "1.76.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1150,6 +1167,19 @@ wheels = [
 ]
 
 [[package]]
+name = "langchain-groq"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "groq" },
+    { name = "langchain-core" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b8/9f/0a80b243f1b890cdc2d856f98d2243f49a58621de16fa80a73eba290bcb4/langchain_groq-1.0.0.tar.gz", hash = "sha256:46645591654c36db7ebc624503f26b38544b9aac0d8cf93e8db7105e049dab74", size = 196702, upload-time = "2025-10-17T15:24:30.81Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/03/0a/fd2b7545f63f2b05790c76260dc63b7cc9b0af88aa1c1e14fab9795805c2/langchain_groq-1.0.0-py3-none-any.whl", hash = "sha256:378124c2a5247df720093617afbd2dae28b06fc666372ffe7a279a0ce86b28d0", size = 16841, upload-time = "2025-10-17T15:24:29.348Z" },
+]
+
+[[package]]
 name = "langchain-openai"
 version = "1.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1200,6 +1230,7 @@ dependencies = [
     { name = "langchain" },
     { name = "langchain-experimental" },
     { name = "langchain-google-genai" },
+    { name = "langchain-groq" },
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "langgraph-cli", extra = ["inmem"] },
@@ -1221,6 +1252,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=1.0.4" },
     { name = "langchain-experimental", specifier = ">=0.0.35" },
     { name = "langchain-google-genai", specifier = ">=3.0.2" },
+    { name = "langchain-groq", specifier = ">=1.0.0" },
     { name = "langchain-openai", specifier = ">=1.0.2" },
     { name = "langgraph", specifier = ">=1.0.2" },
     { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4.7" },
