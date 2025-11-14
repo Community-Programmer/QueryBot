@@ -415,4 +415,9 @@
     font-weight: 600;
     color: #333A3F;
   }
+
+  @keyframes slideProgress {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
 }

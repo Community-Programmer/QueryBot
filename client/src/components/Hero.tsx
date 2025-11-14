@@ -1,9 +1,50 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import ImageSlideshow from "@/components/ui/ImageSlideshow";
 import { ArrowRight, Sparkles } from "lucide-react";
-import heroVisual from "@/assets/hero-visual.jpg";
+import heroVisual1 from "@/assets/1.png";
+import heroVisual2 from "@/assets/2.png";
+import heroVisual3 from "@/assets/3.png";
+import heroVisual4 from "@/assets/4.png";
+import heroVisual5 from "@/assets/5.png";
+import heroVisual6 from "@/assets/6.png";
+
 
 const Hero = () => {
+  // Slideshow images data
+  const heroImages = [
+    {
+      src: heroVisual1,
+      alt: "QueryBot Dashboard - Data Upload",
+      title: "Upload Your Data"
+    },
+    {
+      src: heroVisual2,
+      alt: "QueryBot Dashboard - Ask Questions",
+      title: "Ask in Natural Language"
+    },
+    {
+      src: heroVisual3,
+      alt: "QueryBot Dashboard - Get Insights",
+      title: "Get Instant Insights"
+    },
+    {
+      src: heroVisual4,
+      alt: "QueryBot Dashboard - Visualizations",
+      title: "Beautiful Visualizations"
+    },
+    {
+      src: heroVisual5,
+      alt: "QueryBot Dashboard - Analytics",
+      title: "Smart Analytics"
+    },
+    {
+      src: heroVisual6,
+      alt: "QueryBot Dashboard - Reports",
+      title: "Detailed Reports"
+    }
+  ];
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
       {/* Floating Background Shapes */}
@@ -54,12 +95,17 @@ const Hero = () => {
           </div>
 
           {/* Right Visual */}
-          <div className="relative animate-scale-in">
+          <div className="relative animate-scale-in group">
             <div className="glass-card rounded-2xl overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,168,120,0.4)]">
-              <img 
-                src={heroVisual} 
-                alt="Querybot Dashboard Visualization" 
-                className="w-full h-auto"
+              <ImageSlideshow 
+                images={heroImages}
+                autoPlay={true}
+                autoPlayInterval={4500}
+                showDots={true}
+                showArrows={true}
+                showPlayPause={true}
+                pauseOnHover={true}
+                className="w-full"
               />
             </div>
             
