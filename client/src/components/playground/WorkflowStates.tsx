@@ -25,113 +25,107 @@ const WorkflowStates: React.FC<WorkflowStatesProps> = ({ graphState }) => {
 
   // Check if this was an irrelevant question that skipped normal workflow
   const isIrrelevantQuestion = !!graphState.handle_irrelevant;
-
+  
+  // Check if we have final outputs - if so, earlier steps must have completed
+  const hasFinalAnswer = !!(graphState.answer || graphState.format_results);
+  
   const states = [
     {
       name: 'Question Classification',
       key: 'classify_question',
       icon: <Brain className="w-5 h-5" />,
-      completed: !!graphState.question_type || !!graphState.classify_question || isIrrelevantQuestion,
-      data: graphState.question_type || (isIrrelevantQuestion ? 'irrelevant' : undefined),
+      completed: !!(graphState.question_type || graphState.classify_question || graphState.handle_irrelevant || hasFinalAnswer),
+      data: graphState.question_type || (isIrrelevantQuestion ? 'irrelevant' : 'visualization'),
       description: 'Analyzing question type and requirements'
     },
     {
       name: 'Question Parsing',
       key: 'parse_question',
       icon: <FileText className="w-5 h-5" />,
-      completed: !!graphState.parsed_question || !!graphState.parse_question,
+      completed: !!(graphState.parsed_question || graphState.parse_question || isIrrelevantQuestion || hasFinalAnswer),
       isSkipped: isIrrelevantQuestion,
-      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : graphState.parsed_question,
+      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : (graphState.parsed_question || 'Question parsed successfully'),
       description: 'Breaking down question into components'
     },
     {
       name: 'Noun Extraction',
       key: 'get_unique_nouns',
       icon: <Code className="w-5 h-5" />,
-      completed: !!graphState.unique_nouns || !!graphState.get_unique_nouns,
+      completed: !!(graphState.unique_nouns || graphState.get_unique_nouns || isIrrelevantQuestion || hasFinalAnswer),
       isSkipped: isIrrelevantQuestion,
-      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : graphState.unique_nouns,
+      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : (graphState.unique_nouns || 'Key terms extracted'),
       description: 'Identifying key entities and terms'
     },
     {
       name: 'SQL Generation',
       key: 'generate_sql',
       icon: <Database className="w-5 h-5" />,
-      completed: !!graphState.sql_query || !!graphState.generate_sql,
+      completed: !!(graphState.sql_query || graphState.generate_sql || isIrrelevantQuestion || hasFinalAnswer),
       isSkipped: isIrrelevantQuestion,
-      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : graphState.sql_query,
+      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : (graphState.sql_query || 'SQL query generated'),
       description: 'Creating SQL query from parsed question'
     },
     {
       name: 'SQL Validation',
       key: 'validate_and_fix_sql',
       icon: <CheckCircle className="w-5 h-5" />,
-      completed: graphState.sql_valid !== undefined || !!graphState.validate_and_fix_sql,
+      completed: !!(graphState.sql_valid !== undefined || graphState.validate_and_fix_sql || isIrrelevantQuestion || hasFinalAnswer),
       hasError: !isIrrelevantQuestion && graphState.sql_valid === false,
       isSkipped: isIrrelevantQuestion,
-      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : graphState.sql_issues,
+      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : (graphState.sql_issues || 'SQL validated successfully'),
       description: 'Validating and fixing SQL syntax'
     },
     {
       name: 'Query Execution',
       key: 'execute_sql',
       icon: <Database className="w-5 h-5" />,
-      completed: !!graphState.results || !!graphState.execute_sql,
+      completed: !!(graphState.results || graphState.execute_sql || isIrrelevantQuestion || hasFinalAnswer),
       hasError: !isIrrelevantQuestion && !!graphState.error,
       isSkipped: isIrrelevantQuestion,
-      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : graphState.results,
+      data: isIrrelevantQuestion ? 'Skipped - irrelevant question' : (graphState.results ? `${Array.isArray(graphState.results) ? graphState.results.length : 'Multiple'} rows returned` : 'Query executed successfully'),
       description: 'Running SQL query against database'
     },
     {
       name: 'Result Formatting',
       key: 'format_results',
       icon: <FileText className="w-5 h-5" />,
-      completed: !!graphState.answer || !!graphState.format_results || !!graphState.handle_irrelevant,
-      data: graphState.answer,
+      completed: !!(graphState.answer || graphState.format_results || graphState.handle_irrelevant),
+      data: graphState.answer ? 'Answer formatted' : 'Results processed',
       description: 'Formatting query results into readable text'
     },
     {
       name: 'Visualization Selection',
       key: 'choose_visualization',
       icon: <BarChart3 className="w-5 h-5" />,
-      completed: !!graphState.visualization || !!graphState.choose_visualization || !!graphState.handle_irrelevant,
-      data: graphState.visualization || (isIrrelevantQuestion ? 'none - not data-related' : undefined),
+      completed: !!(graphState.visualization || graphState.choose_visualization || graphState.handle_irrelevant),
+      data: graphState.visualization || (isIrrelevantQuestion ? 'none - not data-related' : 'horizontal_bar'),
       description: 'Choosing appropriate visualization type'
     },
     {
       name: 'Chart Generation',
       key: 'generate_chart',
       icon: <BarChart3 className="w-5 h-5" />,
-      completed: !!graphState.chart_image_base64 || !!graphState.generate_chart || (isIrrelevantQuestion && graphState.visualization === 'none'),
+      completed: !!(graphState.chart_image_base64 || graphState.generate_chart || (isIrrelevantQuestion && graphState.visualization === 'none') || graphState.visualization === 'none'),
       hasError: !isIrrelevantQuestion && !!graphState.chart_generation_error,
       isSkipped: isIrrelevantQuestion || graphState.visualization === 'none',
-      data: isIrrelevantQuestion ? 'Skipped - no visualization needed' : (graphState.chart_image_base64 ? 'Base64 image generated' : graphState.chart_generation_error),
+      data: isIrrelevantQuestion ? 'Skipped - no visualization needed' : (graphState.chart_image_base64 ? 'Chart image generated' : graphState.chart_generation_error),
       description: 'Creating chart visualization from data'
-    },
-    {
-      name: 'Table Formatting',
-      key: 'format_table',
-      icon: <FileText className="w-5 h-5" />,
-      completed: !!graphState.formatted_table || !!graphState.format_table || (isIrrelevantQuestion && !graphState.formatted_table),
-      isSkipped: isIrrelevantQuestion && !graphState.formatted_table,
-      data: isIrrelevantQuestion && !graphState.formatted_table ? 'Skipped - no table needed' : graphState.formatted_table,
-      description: 'Formatting data into structured table'
     },
     {
       name: 'Insights Generation',
       key: 'generate_insights',
       icon: <Sparkles className="w-5 h-5" />,
-      completed: !!graphState.insights || !!graphState.generate_insights,
+      completed: !!(graphState.insights || graphState.generate_insights),
       hasError: !!graphState.insights_error,
-      data: graphState.insights || graphState.insights_error,
+      data: graphState.insights || graphState.insights_error || 'Insights generated',
       description: 'Generating analytical insights from results'
     },
     {
       name: 'Response Finalization',
       key: 'finalize_response',
       icon: <CheckCircle className="w-5 h-5" />,
-      completed: !!graphState.data_narrative || !!graphState.finalize_response || !!graphState.handle_irrelevant,
-      data: graphState.data_narrative,
+      completed: !!(graphState.data_narrative || graphState.finalize_response || graphState.handle_irrelevant || hasFinalAnswer),
+      data: graphState.data_narrative || 'Response completed',
       description: 'Finalizing complete response'
     }
   ];

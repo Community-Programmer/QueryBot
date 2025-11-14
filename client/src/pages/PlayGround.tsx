@@ -396,8 +396,10 @@ const PlayGround: React.FC = () => {
       </div>
 
       {showSidebar && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-end">
-          <Sidebar onClose={toggleSidebar} graphState={graphState!} />
+        <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
+          <div className="pointer-events-auto">
+            <Sidebar onClose={toggleSidebar} graphState={graphState!} />
+          </div>
         </div>
       )}
     </div>

@@ -26,20 +26,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ graphState, onClose }) => {
         </Button>
       </div>
       
-      <Tabs defaultValue="workflow" className="flex-1">
-        <TabsList className="grid w-full grid-cols-2 mx-4 mt-4">
-          <TabsTrigger value="workflow">Workflow</TabsTrigger>
-          <TabsTrigger value="traces">Raw Traces</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="workflow" className="p-4 mt-4">
-          <WorkflowStates graphState={graphState} />
-        </TabsContent>
-        
-        <TabsContent value="traces" className="p-4 mt-4">
-          <Stream graphState={graphState} />
-        </TabsContent>
-      </Tabs>
+      <div className="p-4">
+        <WorkflowStates graphState={graphState} />
+      </div>
     </div>
   );
 };
