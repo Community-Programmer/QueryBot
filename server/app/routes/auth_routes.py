@@ -229,11 +229,12 @@ def logout():
         JSON response confirming logout
     """
     try:
-        # Create response data
-        response_data, _ = success_response('Logged out successfully')
+        # Create response data (success_response returns tuple)
+        flask_response, status_code = success_response('Logged out successfully')
         
         # Create Flask response and clear cookies
-        response = make_response(jsonify(response_data), 200)
+        response = make_response(flask_response.get_data(), status_code)
+        response.content_type = 'application/json'
         unset_jwt_cookies(response)
         
         return response
