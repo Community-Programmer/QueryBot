@@ -128,11 +128,11 @@ const EnhancedResponseDisplay: React.FC<EnhancedResponseDisplayProps> = ({
         {hasChart && (
           <div className="mt-6">
             <h3 className="text-lg font-semibold mb-4">Visualization</h3>
-            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" style={{ minHeight: '400px', maxHeight: '60vh' }}>
+            <div className="bg-white border border-gray-200 rounded-lg overflow-auto shadow-sm" style={{ minHeight: '300px', maxHeight: '500px' }}>
               <Base64ImageDisplay 
                 base64Data={graphState.chart_image_base64!}
                 error={graphState.chart_generation_error}
-                className="w-full h-full"
+                className="w-full min-h-full"
               />
             </div>
             {graphState.visualization_reason && (
@@ -247,11 +247,11 @@ const EnhancedResponseDisplay: React.FC<EnhancedResponseDisplayProps> = ({
             <TabsContent value="chart" className="p-6 mt-0 h-full overflow-y-auto">
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold mb-4 text-[#333A3F]">Visualization</h3>
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" style={{ minHeight: '400px', maxHeight: '70vh' }}>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-auto shadow-sm" style={{ minHeight: '300px', maxHeight: '450px' }}>
                   <Base64ImageDisplay 
                     base64Data={graphState.chart_image_base64!}
                     error={graphState.chart_generation_error}
-                    className="w-full h-full"
+                    className="w-full min-h-full"
                   />
                 </div>
                 {graphState.visualization_reason && (
