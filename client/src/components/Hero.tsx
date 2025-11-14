@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import ImageSlideshow from "@/components/ui/ImageSlideshow";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles, Play, Database } from "lucide-react";
+import { useAppSelector } from "@/hooks/redux";
 import heroVisual1 from "@/assets/1.png";
 import heroVisual2 from "@/assets/2.png";
 import heroVisual3 from "@/assets/3.png";
@@ -11,6 +12,9 @@ import heroVisual6 from "@/assets/6.png";
 
 
 const Hero = () => {
+  // Get authentication state
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+
   // Slideshow images data
   const heroImages = [
     {
@@ -71,26 +75,54 @@ const Hero = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button className="btn-hero text-lg group">
-                Try Demo
-                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Link to="/auth">
-                <Button className="btn-outline-hero text-lg">
-                  Sign Up Free
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                <Link to="/playground">
+                  <Button className="btn-hero text-lg group">
+                    Open Playground
+                    <Play className="ml-2 w-5 h-5 group-hover:scale-110 transition-transform" />
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/playground">
+                    <Button className="btn-hero text-lg group">
+                      Try QueryBot
+                      <Database className="ml-2 w-5 h-5 group-hover:rotate-12 transition-transform" />
+                    </Button>
+                  </Link>
+                  <Link to="/auth">
+                    <Button className="btn-outline-hero text-lg">
+                      Sign Up Free
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
 
             <div className="mt-8 flex items-center gap-8 justify-center lg:justify-start text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span>No credit card required</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span>Free forever plan</span>
-              </div>
+              {isAuthenticated ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span>Upload your data and start querying</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span>Generate charts instantly</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span>No credit card required</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span>Free forever plan</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
