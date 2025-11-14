@@ -133,6 +133,7 @@ const EnhancedResponseDisplay: React.FC<EnhancedResponseDisplayProps> = ({
                 base64Data={graphState.chart_image_base64!}
                 error={graphState.chart_generation_error}
                 className="w-full min-h-full"
+                fileName={`chart_${graphState.visualization || 'visualization'}_${Date.now()}`}
               />
             </div>
             {graphState.visualization_reason && (
@@ -252,6 +253,7 @@ const EnhancedResponseDisplay: React.FC<EnhancedResponseDisplayProps> = ({
                     base64Data={graphState.chart_image_base64!}
                     error={graphState.chart_generation_error}
                     className="w-full min-h-full"
+                    fileName={`chart_${graphState.visualization || 'visualization'}_${Date.now()}`}
                   />
                 </div>
                 {graphState.visualization_reason && (
