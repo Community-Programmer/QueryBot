@@ -57,9 +57,6 @@ const Navbar = () => {
             <a href="#workflow" className="text-foreground/80 hover:text-primary transition-colors font-medium">
               How it Works
             </a>
-            <a href="#" className="text-foreground/80 hover:text-primary transition-colors font-medium">
-              Docs
-            </a>
             <Link to="/playground" className="text-foreground/80 hover:text-primary transition-colors font-medium">
               Playground
             </Link>
@@ -117,9 +114,9 @@ const Navbar = () => {
               <a href="#workflow" className="text-foreground/80 hover:text-primary transition-colors font-medium py-2">
                 How it Works
               </a>
-              <a href="#" className="text-foreground/80 hover:text-primary transition-colors font-medium py-2">
-                Docs
-              </a>
+              <Link to="/playground" className="text-foreground/80 hover:text-primary transition-colors font-medium py-2">
+                Playground
+              </Link>
               <div className="flex flex-col gap-2 mt-2">
                 {isAuthenticated ? (
                   <>

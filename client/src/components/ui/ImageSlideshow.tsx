@@ -33,8 +33,8 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [progress, setProgress] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const progressRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const progressRef = useRef<number | null>(null);
 
   // Enhanced auto-play functionality with progress tracking
   useEffect(() => {
@@ -45,7 +45,7 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
       setProgress(0);
       
       // Start progress animation
-      const progressInterval = setInterval(() => {
+      const progressInterval = window.setInterval(() => {
         setProgress((prev) => {
           if (prev >= 100) {
             return 0;
@@ -55,7 +55,7 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
       }, 50);
       
       // Set slide change interval
-      const slideInterval = setInterval(() => {
+      const slideInterval = window.setInterval(() => {
         setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
         setProgress(0);
       }, autoPlayInterval);
@@ -64,13 +64,13 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
       progressRef.current = progressInterval;
 
       return () => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        if (progressRef.current) clearInterval(progressRef.current);
+        if (intervalRef.current) window.clearInterval(intervalRef.current);
+        if (progressRef.current) window.clearInterval(progressRef.current);
       };
     } else {
       // Clear intervals when not playing
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (progressRef.current) clearInterval(progressRef.current);
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+      if (progressRef.current) window.clearInterval(progressRef.current);
     }
   }, [isPlaying, isHovered, autoPlayInterval, images.length, pauseOnHover]);
 
