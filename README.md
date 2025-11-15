@@ -65,4 +65,8 @@ QueryBot is a sophisticated AI-powered platform that transforms natural language
 <img width="1891" height="995" alt="Screenshot 2025-11-14 224055" src="https://github.com/user-attachments/assets/11597fff-d011-4d3c-b541-0bcb317b5cb5" />
 <img width="1918" height="989" alt="Screenshot 2025-11-14 224117" src="https://github.com/user-attachments/assets/075684ff-13eb-4688-996a-6b08224ed8dd" />
 <img<img width="1919" height="988" alt="Screenshot 2025-11-14 224227" src="https://github.com/user-attachments/assets/525613d7-96d8-4e2b-a4b8-8987ae8b99e0" />
+<i<img width="1919" height="988" alt="Screenshot 2025-11-14 224227" src="https://github.com/user-attachments/assets/18f9c8d6-f654-4c96-99e7-82a437e87ae4" />
+<img width="1919" height="988" alt="Screenshot 2025-11-14 224227" src="https://github.com/user-attachments/assets/9bbcd0b5-a5b9-460c-bd62-668bf3fda0c2" />
+
+
  
