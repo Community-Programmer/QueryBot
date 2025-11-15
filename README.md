@@ -57,4 +57,12 @@ QueryBot is a sophisticated AI-powered platform that transforms natural language
 ![Groq](https://img.shields.io/badge/Groq-F55036?style=for-the-badge&logo=groq&logoColor=white)
 
 > **⚠️ Need help?** Check the [SETUP.md](./SETUP.md) for detailed installation guide, troubleshooting, and configuration options.
+>
+> <img width="1919" height="998" alt="Screenshot 2025-11-14 223617" src="https://github.com/user-attachments/assets/762264f8-48c1-4472-8e08-392adf325366" />
 
+<img width="1919" height="996" alt="Screenshot 2025-11-14 224011" src="https://github.com/user-attachments/assets/7e9fb0fc-2f1f-48dc-8739-c794553d2c0e" />
+
+<img width="1891" height="995" alt="Screenshot 2025-11-14 224055" src="https://github.com/user-attachments/assets/11597fff-d011-4d3c-b541-0bcb317b5cb5" />
+<img width="1918" height="989" alt="Screenshot 2025-11-14 224117" src="https://github.com/user-attachments/assets/075684ff-13eb-4688-996a-6b08224ed8dd" />
+<img<img width="1919" height="988" alt="Screenshot 2025-11-14 224227" src="https://github.com/user-attachments/assets/525613d7-96d8-4e2b-a4b8-8987ae8b99e0" />
+ width="1918" height="994" alt="Screenshot 2025-11-14 224133" src="https://github.com/user-attachments/assets/cf403070-89bc-414d-9836-1c8ed2873781" />
