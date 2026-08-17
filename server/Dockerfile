@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------
 # Build stage
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 # uv resolves and installs far faster than pip and honours the committed
 # lockfile. Installed from PyPI rather than copied from ghcr.io/astral-sh/uv so
@@ -30,7 +30,7 @@ RUN uv sync --frozen --no-dev
 # ---------------------------------------------------------------------------
 # Runtime stage
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
