@@ -890,7 +890,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=1.0.4" },
     { name = "langchain-groq", specifier = ">=1.0.0" },
     { name = "langgraph", specifier = ">=1.0.2" },
-    { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4.7" },
+    { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4.31" },
     { name = "matplotlib", specifier = ">=3.7.0" },
     { name = "numpy", specifier = ">=1.24.0" },
     { name = "pandas", specifier = ">=2.0.0" },
@@ -902,7 +902,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4.7" },
+    { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4.31" },
     { name = "pytest", specifier = ">=8.3.0" },
 ]
 
