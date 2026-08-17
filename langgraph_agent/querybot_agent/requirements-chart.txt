@@ -3,7 +3,7 @@
 
 # Core data science packages
 pandas>=2.0.0
-numpy>=1.24.0
+numpy>=2.5.2
 
 # Visualization packages
 matplotlib>=3.7.0
