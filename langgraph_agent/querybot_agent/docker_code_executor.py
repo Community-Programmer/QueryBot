@@ -166,7 +166,7 @@ class DockerCodeExecutor:
                 if result.returncode == 0:
                     output = result.stdout.strip()
                     if result.stderr:
-                        output += f"\\nWarnings: {result.stderr.strip()}"
+                        output += f"\nWarnings: {result.stderr.strip()}"
                     return output if output else "Code executed successfully in Docker container"
                 else:
                     error_msg = result.stderr.strip() or "Unknown error occurred in Docker container"
@@ -250,17 +250,14 @@ except Exception as e:
     
     def _indent_code(self, code: str) -> str:
         """
-        Indent code by 4 spaces for proper nesting in try-except block.
-        
-        Args:
-            code (str): Code to indent
-            
-        Returns:
-            str: Indented code
+        Indent code by four spaces so it nests inside the try/except wrapper.
+
+        Note the newline escaping: this previously split on the two-character
+        sequence backslash-n rather than an actual newline, so the whole program
+        was treated as one line and the wrapper produced a syntax error every
+        time it was used.
         """
-        lines = code.split('\\n')
-        indented_lines = ['    ' + line for line in lines]
-        return '\\n'.join(indented_lines)
+        return '\n'.join('    ' + line for line in code.split('\n'))
     
     def validate_environment(self) -> Dict[str, Any]:
         """

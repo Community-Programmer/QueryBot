@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# Pre-commit checks.
+#
+# Deliberately fast: only staged files are examined, and the full test suite is
+# left to CI. A hook slow enough to be annoying is a hook that gets bypassed.
+#
+# Enable with:  git config core.hooksPath .githooks
+# Skip once:    git commit --no-verify
+
+set -e
+
+staged() {
+    git diff --cached --name-only --diff-filter=ACM | grep -E "$1" || true
+}
+
+fail() {
+    echo "  ✗ $1" >&2
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Refuse to commit obvious secrets.
+# ---------------------------------------------------------------------------
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '(^|/)\.env$'; then
+    fail "A .env file is staged. Secrets must not be committed."
+fi
+
+SECRETS=$(git diff --cached -U0 --diff-filter=ACM \
+    | grep -E '^\+' \
+    | grep -viE '\.example|placeholder|change-?me|your-|xxx|dummy|fake|test-key' \
+    | grep -inE '(sk-[a-zA-Z0-9]{20,}|gsk_[a-zA-Z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)' \
+    || true)
+
+if [ -n "$SECRETS" ]; then
+    echo "  ✗ A staged change looks like it contains a credential:" >&2
+    echo "$SECRETS" >&2
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Client: lint and type-check when TypeScript changed.
+# ---------------------------------------------------------------------------
+if [ -n "$(staged '^client/.*\.(ts|tsx)$')" ]; then
+    echo "  → client"
+    (cd client && npx lint-staged) || fail "Client lint failed."
+    (cd client && npx tsc --noEmit -p tsconfig.app.json) || fail "Client type-check failed."
+fi
+
+# ---------------------------------------------------------------------------
+# SQLite service: type-check when TypeScript changed.
+# ---------------------------------------------------------------------------
+if [ -n "$(staged '^sqlite_server/src/.*\.ts$')" ]; then
+    echo "  → sqlite_server"
+    (cd sqlite_server && npx tsc --noEmit) || fail "SQLite service type-check failed."
+fi
+
+# ---------------------------------------------------------------------------
+# Python: byte-compile changed files to catch syntax errors early.
+# ---------------------------------------------------------------------------
+PY_FILES=$(staged '^(server|langgraph_agent)/.*\.py$')
+if [ -n "$PY_FILES" ]; then
+    echo "  → python"
+    # shellcheck disable=SC2086
+    python -m py_compile $PY_FILES || fail "A Python file does not compile."
+fi
+
+echo "  ✓ pre-commit checks passed"

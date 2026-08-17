@@ -5,21 +5,24 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy.dialects.postgresql import UUID
+import sqlalchemy as sa
+
 from app.extensions import db
 
 
 class User(db.Model):
     """User model for authentication."""
-    
+
     __tablename__ = 'users'
-    
-    # Primary key using UUID
+
+    # sa.Uuid renders as native UUID on PostgreSQL and CHAR(32) elsewhere. The
+    # PostgreSQL-specific type used previously made the documented SQLite
+    # development setup fail to create tables at all.
     id = db.Column(
-        UUID(as_uuid=True), 
-        primary_key=True, 
-        default=uuid.uuid4, 
-        unique=True, 
+        sa.Uuid(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        unique=True,
         nullable=False
     )
     
@@ -72,12 +75,18 @@ class User(db.Model):
     
     @classmethod
     def find_by_id(cls, user_id: str) -> Optional['User']:
-        """Find user by ID."""
+        """
+        Find a user by ID.
+
+        The identifier is parsed before it reaches the query: passing a malformed
+        string straight to the driver raises a DataError that surfaces as a 500
+        rather than a clean "not found".
+        """
         try:
-            return cls.query.filter_by(id=user_id).first()
-        except ValueError:
-            # Invalid UUID format
+            parsed = uuid.UUID(str(user_id))
+        except (ValueError, AttributeError, TypeError):
             return None
+        return cls.query.filter_by(id=parsed).first()
     
     def update_last_login(self):
         """Update the user's last login timestamp."""

@@ -1,60 +1,82 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
+import fs from 'fs';
+import { config } from './config';
 import { errorHandler } from './middleware/errorHandler';
+import { requestContext } from './middleware/requestContext';
 import { requestLogger } from './middleware/requestLogger';
 import apiRoutes from './routes';
-import { deleteOldFiles } from './utils/fileUtils';
 
-// Create Express app
 const app: Express = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Behind a reverse proxy, trust the forwarded headers so client IPs log correctly.
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
-// Request logging
+app.use(
+  cors({
+    origin: config.corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Service-Token'],
+  })
+);
+
+// Minimal hardening without pulling in a dependency: these responses are JSON
+// and file downloads, never rendered HTML.
+app.use((_req: Request, res: Response, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
+
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+// Must precede the logger so every log line carries the correlation id.
+app.use(requestContext);
 app.use(requestLogger);
 
-// Set up interval to run deleteOldFiles every hour
-setInterval(deleteOldFiles, 3600000);
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    environment: config.nodeEnv,
+    timestamp: new Date().toISOString(),
+  });
+});
 
-// API routes
+/**
+ * Readiness, as distinct from liveness: this reports whether the service can
+ * actually do its job, which here means the uploads directory is writable.
+ */
+app.get('/ready', (_req: Request, res: Response) => {
+  const checks: Record<string, string> = {};
+
+  try {
+    fs.accessSync(config.uploadDir, fs.constants.W_OK);
+    checks.storage = 'ok';
+  } catch {
+    checks.storage = 'unwritable';
+  }
+
+  const ready = checks.storage === 'ok';
+  res.status(ready ? 200 : 503).json({ ready, checks, timestamp: new Date().toISOString() });
+});
+
 app.use('/', apiRoutes);
 
-// Root endpoint
-app.get('/', (req: Request, res: Response) => {
-  res.json({
-    message: 'QueryBot SQLite Server',
-    version: '1.0.0',
-    endpoints: {
-      'POST /upload-file': 'Upload SQLite or CSV file',
-      'POST /execute-query': 'Execute SQL query on uploaded database', 
-      'GET /get-schema/:uuid': 'Get database schema information',
-    },
-  });
-});
-
-// Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development',
-  });
-});
-
-// 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({
-    error: 'Not Found',
-    message: `Route ${req.originalUrl} not found`,
+    success: false,
+    message: `Route ${req.method} ${req.originalUrl} not found`,
+    data: null,
     timestamp: new Date().toISOString(),
   });
 });
 
-// Error handling middleware (must be last)
+// Must be registered last so it catches everything above it.
 app.use(errorHandler);
 
 export default app;

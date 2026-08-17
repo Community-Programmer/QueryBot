@@ -127,8 +127,11 @@ const Hero = () => {
           </div>
 
           {/* Right Visual */}
-          <div className="relative animate-scale-in group">
-            <div className="glass-card rounded-2xl overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,168,120,0.4)]">
+          <div className="animate-scale-in group relative">
+            <div
+              className="glass-card overflow-hidden rounded-2xl"
+              style={{ boxShadow: 'var(--shadow-elevated)' }}
+            >
               <ImageSlideshow 
                 images={heroImages}
                 autoPlay={true}

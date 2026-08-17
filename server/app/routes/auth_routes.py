@@ -1,17 +1,23 @@
 """
 Authentication routes for user signup, login, and token management.
 """
-from flask import Blueprint, request, make_response, jsonify
+from flask import Blueprint, make_response, request
 from flask_jwt_extended import (
-    jwt_required, get_jwt_identity, get_jwt, 
-    create_access_token, create_refresh_token,
-    set_access_cookies, set_refresh_cookies, 
-    unset_jwt_cookies
+    create_access_token,
+    create_refresh_token,
+    get_jwt_identity,
+    jwt_required,
+    set_access_cookies,
+    set_refresh_cookies,
+    unset_jwt_cookies,
 )
 
+from app.schemas.user_schema import user_response_schema
 from app.services.auth_service import AuthService
+from app.utils.logging import get_logger
 from app.utils.responses import error_response, success_response
 
+logger = get_logger(__name__)
 
 # Create authentication blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -67,7 +73,7 @@ def signup():
             return response_tuple
         
     except Exception as e:
-        print(f"Signup error: {e}")
+        logger.exception("Signup failed: %s", e)
         return error_response(
             'Registration failed. Please try again.',
             500
@@ -122,7 +128,7 @@ def login():
             return response_tuple
         
     except Exception as e:
-        print(f"Login error: {e}")
+        logger.exception("Login failed: %s", e)
         return error_response(
             'Login failed. Please try again.',
             500
@@ -141,17 +147,16 @@ def refresh():
     try:
         # Get current user identity from refresh token
         current_user_id = get_jwt_identity()
-        print(f"Refresh token request for user ID: {current_user_id}")
+        logger.debug("Refresh requested for user %s", current_user_id)
         
         # Validate user still exists and is active
         user = AuthService.get_user_by_id(current_user_id)
         if not user or not user.is_active:
-            print(f"User not found or inactive: {current_user_id}")
+            logger.warning("Refresh rejected for missing or inactive user %s", current_user_id)
             return error_response('Invalid refresh token', 401)
         
         # Create new access token
         new_access_token = create_access_token(identity=str(user.id))
-        print(f"New access token created for user: {user.id}")
         
         # Create response data (success_response returns (flask_response, status_code))
         flask_response, status_code = success_response(
@@ -164,13 +169,10 @@ def refresh():
         response.content_type = 'application/json'
         set_access_cookies(response, new_access_token)
         
-        print("Access token cookie set successfully")
         return response
         
     except Exception as e:
-        print(f"Token refresh error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Token refresh failed: %s", e)
         return error_response(
             'Token refresh failed. Please try again.',
             401
@@ -202,17 +204,14 @@ def get_profile():
         if not user.is_active:
             return error_response('Account is deactivated', 403)
         
-        # Return user profile
-        from app.schemas.user_schema import user_response_schema
         user_data = user_response_schema.dump(user)
-        
-        from app.utils.responses import success_response
         return success_response(
             'Profile retrieved successfully',
             {'user': user_data}
         )
         
     except Exception as e:
+        logger.exception("Profile retrieval failed: %s", e)
         return error_response(
             'Failed to retrieve profile. Please try again.',
             500
@@ -240,7 +239,7 @@ def logout():
         return response
         
     except Exception as e:
-        print(f"Logout error: {e}")
+        logger.exception("Logout failed: %s", e)
         return error_response(
             'Logout failed. Please try again.',
             500
@@ -269,17 +268,14 @@ def check_auth():
         if not user.is_active:
             return error_response('Account is deactivated', 403)
         
-        # Return user data
-        from app.schemas.user_schema import user_response_schema
         user_data = user_response_schema.dump(user)
-        
         return success_response(
             'Authentication valid',
             {'user': user_data}
         )
         
     except Exception as e:
-        print(f"Auth check error: {e}")
+        logger.warning("Auth check failed: %s", e)
         return error_response(
             'Authentication check failed',
             401

@@ -1,0 +1,85 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, so newly disclosed advisories against unchanged code are still
+    # caught rather than waiting for the next commit.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # Adds the injection, path-traversal and auth queries beyond the
+          # default set — precisely the classes this codebase handles.
+          queries: security-and-quality
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
+
+  dependencies:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Audit client dependencies
+        working-directory: client
+        # Advisory only for moderate findings; high and critical fail the build.
+        run: npm audit --audit-level=high
+
+      - name: Audit SQLite service dependencies
+        working-directory: sqlite_server
+        run: npm audit --audit-level=high
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Audit Python dependencies
+        run: |
+          uvx pip-audit --version
+          for service in server langgraph_agent; do
+            echo "::group::$service"
+            (cd "$service" && uv export --frozen --no-dev --format requirements-txt > /tmp/req.txt \
+              && uvx pip-audit --requirement /tmp/req.txt --strict) || exit 1
+            echo "::endgroup::"
+          done
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Full history: a secret committed earlier and later removed is still
+          # exposed in the object store.
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

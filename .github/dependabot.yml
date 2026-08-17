@@ -1,0 +1,58 @@
+version: 2
+
+updates:
+  # Patch and minor bumps are grouped into one PR per ecosystem per week;
+  # majors are raised separately because they need a real review.
+  - package-ecosystem: npm
+    directory: /client
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      client-minor:
+        patterns: ['*']
+        update-types: [minor, patch]
+    labels: [dependencies, client]
+
+  - package-ecosystem: npm
+    directory: /sqlite_server
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      sqlite-minor:
+        patterns: ['*']
+        update-types: [minor, patch]
+    labels: [dependencies, sqlite-service]
+
+  - package-ecosystem: uv
+    directory: /server
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      server-minor:
+        patterns: ['*']
+        update-types: [minor, patch]
+    labels: [dependencies, server]
+
+  - package-ecosystem: uv
+    directory: /langgraph_agent
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      agent-minor:
+        patterns: ['*']
+        update-types: [minor, patch]
+    labels: [dependencies, agent]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+    labels: [dependencies, ci]
+
+  - package-ecosystem: docker
+    directories:
+      - /client
+      - /server
+      - /sqlite_server
+      - /langgraph_agent
+    schedule: { interval: monthly }
+    labels: [dependencies, docker]
