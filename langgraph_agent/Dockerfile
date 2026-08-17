@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------
 # Build stage
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Installed from PyPI rather than copied from ghcr.io/astral-sh/uv so the build
 # needs only one registry; some networks cannot reach ghcr.io.
@@ -26,7 +26,7 @@ RUN uv sync --frozen
 # ---------------------------------------------------------------------------
 # Runtime stage
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
