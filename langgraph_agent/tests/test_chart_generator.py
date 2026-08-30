@@ -14,6 +14,7 @@ os.environ.setdefault('CHART_DOCKER_ENABLED', 'false')
 os.environ.setdefault('GROQ_API_KEY', 'test-key')
 
 from querybot_agent.chart_generator import ChartGenerator  # noqa: E402
+from querybot_agent.chart_templates import build_chart_code  # noqa: E402
 
 VISUALIZATIONS = [
     'bar',
@@ -37,8 +38,8 @@ def generator() -> ChartGenerator:
 
 class TestGeneratedCode:
     @pytest.mark.parametrize('visualization', VISUALIZATIONS)
-    def test_every_chart_type_produces_valid_python(self, generator, visualization):
-        code = generator._build_chart_code(visualization, ROWS, 'Revenue by line', '/tmp/chart.png')
+    def test_every_chart_type_produces_valid_python(self, visualization):
+        code = build_chart_code(visualization, ROWS, 'Revenue by line', '/tmp/chart.png')
         ast.parse(code)
 
     @pytest.mark.parametrize(
@@ -52,40 +53,40 @@ class TestGeneratedCode:
             '{{double braces}} and {single}',
         ],
     )
-    def test_awkward_questions_do_not_break_codegen(self, generator, question):
+    def test_awkward_questions_do_not_break_codegen(self, question):
         """
         The question used to be interpolated into an f-string inside the
         generated code, so a brace produced invalid Python and an apostrophe
         could terminate the literal early.
         """
-        code = generator._build_chart_code('bar', ROWS, question, '/tmp/chart.png')
+        code = build_chart_code('bar', ROWS, question, '/tmp/chart.png')
         ast.parse(code)
 
-    def test_awkward_data_does_not_break_codegen(self, generator):
+    def test_awkward_data_does_not_break_codegen(self):
         rows = [
             ["quote' and \"double\"", 1.5],
             ['brace {x} and backslash \\', 2.5],
             [None, 3.5],
             ['newline\nin\ncell', 4.5],
         ]
-        code = generator._build_chart_code('bar', rows, 'Test', '/tmp/chart.png')
+        code = build_chart_code('bar', rows, 'Test', '/tmp/chart.png')
         ast.parse(code)
 
-    def test_the_output_path_is_used_verbatim(self, generator):
+    def test_the_output_path_is_used_verbatim(self):
         """The same template serves the container mount and a local directory."""
-        assert '"/app/output/my-chart.png"' in generator._build_chart_code(
+        assert '"/app/output/my-chart.png"' in build_chart_code(
             'bar', ROWS, 'Test', '/app/output/my-chart.png'
         )
-        assert '"generated_charts/local.png"' in generator._build_chart_code(
+        assert '"generated_charts/local.png"' in build_chart_code(
             'bar', ROWS, 'Test', 'generated_charts/local.png'
         )
 
-    def test_no_untrusted_value_becomes_code(self, generator):
+    def test_no_untrusted_value_becomes_code(self):
         """
         The safety property that permits in-process rendering: data and title
         arrive as JSON literals, never as executable syntax.
         """
-        code = generator._build_chart_code(
+        code = build_chart_code(
             'bar', [['__import__("os").system("id")', 1]], 'title', '/tmp/c.png'
         )
         ast.parse(code)

@@ -9,6 +9,7 @@ from typing import Any, Dict, Literal
 
 from langchain_core.prompts import ChatPromptTemplate
 
+from querybot_agent import refinement
 from querybot_agent.config import settings
 from querybot_agent.database_manager import DatabaseManager, DatabaseError
 from querybot_agent.llm_manager import LLMManager
@@ -28,8 +29,16 @@ class QuestionClassifier:
         self.db_manager = DatabaseManager()
 
     def classify_question(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Return the classification fields the routing functions read."""
+        """
+        Return the classification fields the routing functions read.
+
+        When a previous answer exists this call also decides whether the turn is a
+        follow-up that only restyles it. Detecting that here rather than in a node
+        of its own means a first question makes exactly as many model calls as
+        before.
+        """
         question = state['question']
+        previous = state.get('previous') if settings.refine_followups else None
 
         try:
             schema = self.db_manager.get_schema(state['uuid'])
@@ -37,8 +46,44 @@ class QuestionClassifier:
             logger.warning('Schema unavailable during classification: %s', exc)
             schema = 'Schema unavailable'
 
-        prompt = ChatPromptTemplate.from_messages([
-            ('system', '''You classify questions asked about a database.
+        prompt = self._build_prompt(bool(previous))
+
+        try:
+            result = self.llm_manager.invoke_json(
+                prompt,
+                schema=schema,
+                question=question,
+                previous=refinement.previous_summary(previous),
+            )
+            question_type = str(result.get('question_type', 'general'))
+            intent, chart_spec = refinement.parse_intent(result, previous)
+
+            if intent == refinement.RESTYLE:
+                logger.info('Treating "%s" as a restyle: %s', question[:60], chart_spec)
+
+            return {
+                'question_type': question_type,
+                'requires_visualization': bool(result.get('requires_visualization', question_type == 'chart')),
+                'requires_table': bool(result.get('requires_table', question_type == 'table')),
+                'is_relevant': bool(result.get('is_relevant', True)),
+                'classification_confidence': float(result.get('confidence', 0.8)),
+                'classification_reasoning': str(result.get('reasoning', '')),
+                'intent': intent,
+                'chart_spec': chart_spec,
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.warning('Classification failed, falling back to keywords: %s', exc)
+            return self._keyword_fallback(question, str(exc))
+
+    @staticmethod
+    def _build_prompt(has_previous: bool) -> ChatPromptTemplate:
+        """
+        Build the classifier prompt.
+
+        The refinement half is appended only when there is something to refine, so
+        the first turn of a conversation sends the same prompt it always did.
+        """
+        system = '''You classify questions asked about a database.
 
 Categories:
 - "chart": the user wants a visual - a graph, plot, trend or comparison
@@ -57,30 +102,32 @@ Respond with JSON only:
     "requires_visualization": boolean,
     "requires_table": boolean,
     "confidence": number,
-    "reasoning": string
-}}'''),
-            ('human', '''Database schema:
+    "reasoning": string'''
+
+        if has_previous:
+            system += ''',
+    "intent": "new" | "restyle" | "requery",
+    "chart_type": string or null,
+    "palette": string or null,
+    "sort": "asc" | "desc" | null,
+    "limit": number or null'''
+
+        system += '\n}}'
+
+        if has_previous:
+            system += '\n' + refinement.INSTRUCTIONS
+
+        human = '''Database schema:
 {schema}
+
+===Previous turn:
+{previous}
 
 Question: {question}
 
-Classify it:'''),
-        ])
+Classify it:'''
 
-        try:
-            result = self.llm_manager.invoke_json(prompt, schema=schema, question=question)
-            question_type = str(result.get('question_type', 'general'))
-            return {
-                'question_type': question_type,
-                'requires_visualization': bool(result.get('requires_visualization', question_type == 'chart')),
-                'requires_table': bool(result.get('requires_table', question_type == 'table')),
-                'is_relevant': bool(result.get('is_relevant', True)),
-                'classification_confidence': float(result.get('confidence', 0.8)),
-                'classification_reasoning': str(result.get('reasoning', '')),
-            }
-        except Exception as exc:  # noqa: BLE001
-            logger.warning('Classification failed, falling back to keywords: %s', exc)
-            return self._keyword_fallback(question, str(exc))
+        return ChatPromptTemplate.from_messages([('system', system), ('human', human)])
 
     @staticmethod
     def _keyword_fallback(question: str, reason: str) -> Dict[str, Any]:
@@ -103,6 +150,11 @@ Classify it:'''),
             'is_relevant': question_type != 'irrelevant',
             'classification_confidence': 0.5,
             'classification_reasoning': f'Keyword fallback after classification error: {reason}',
+            # Keywords cannot tell a restyle from a new question with any
+            # confidence, and guessing wrong shows the user a chart of the wrong
+            # data. Falling back to the full workflow is slower but correct.
+            'intent': refinement.NEW,
+            'chart_spec': {},
         }
 
 
@@ -111,11 +163,22 @@ def classify_question_node(state: Dict[str, Any]) -> Dict[str, Any]:
     return QuestionClassifier().classify_question(state)
 
 
-def is_question_relevant(state: Dict[str, Any]) -> Literal['process_question', 'handle_irrelevant']:
-    """Route irrelevant questions away from the SQL pipeline."""
-    if state.get('is_relevant', True) and state.get('question_type') != 'irrelevant':
-        return 'process_question'
-    return 'handle_irrelevant'
+def route_question(
+    state: Dict[str, Any],
+) -> Literal['process_question', 'handle_irrelevant', 'apply_refinement']:
+    """
+    Send the turn down one of the three paths.
+
+    A restyle skips the SQL pipeline entirely: the previous query is re-run as-is,
+    so there is nothing to parse, generate or validate.
+    """
+    if not (state.get('is_relevant', True) and state.get('question_type') != 'irrelevant'):
+        return 'handle_irrelevant'
+
+    if state.get('intent') == refinement.RESTYLE and state.get('chart_spec'):
+        return 'apply_refinement'
+
+    return 'process_question'
 
 
 def should_generate_chart(state: Dict[str, Any]) -> Literal['generate_chart', 'skip_chart']:
@@ -177,6 +240,12 @@ def should_repair_sql(state: Dict[str, Any]) -> Literal['repair_sql', 'continue'
 def should_generate_insights(state: Dict[str, Any]) -> Literal['generate_insights', 'finalize']:
     """Insights need enough rows to say something non-trivial."""
     results = state.get('results') or []
+
+    # A restyle shows the same rows a different way. Re-deriving the analysis
+    # would cost two model calls to reproduce text the user already has, so the
+    # refiner carries the previous one forward instead.
+    if state.get('intent') == refinement.RESTYLE:
+        return 'finalize'
 
     if len(results) > 1 and state.get('is_relevant', True) and state.get('question_type') != 'irrelevant':
         return 'generate_insights'

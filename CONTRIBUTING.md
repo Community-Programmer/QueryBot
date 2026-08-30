@@ -25,13 +25,6 @@ cd server && uv run python main.py     # or: cd client && npm run dev
 make check      # typecheck + lint + every test suite
 ```
 
-Optionally enable the pre-commit hook, which runs the same checks against staged
-files only and refuses commits containing anything that looks like a credential:
-
-```bash
-git config core.hooksPath .githooks
-```
-
 ## Layout
 
 ```
@@ -39,8 +32,21 @@ client/           React SPA
 server/           Flask API — auth, ownership, history, proxying
 sqlite_server/    Dataset storage and read-only query execution
 langgraph_agent/  NL → SQL, charts, insights
-e2e/              Playwright specs against the running stack
 docs/             Architecture and decision records
+```
+
+Inside the agent, one module per workflow concern — the graph in
+`workflow_manager.py` wires them together:
+
+```
+llm_manager.py        Provider-agnostic model access (Groq/OpenAI/Anthropic/Google)
+question_classifier.py  Relevance, output kind, and follow-up intent
+refinement.py         Restyling a previous result instead of re-querying
+sql_agent.py          Generate → validate → execute → repair → answer
+visualization.py      Which chart type suits the result
+chart_templates.py    The plotting script, one template per chart type
+chart_generator.py    Runs that script, in-process or in the sandbox
+insights_generator.py Analysis, follow-up questions, data-quality notes
 ```
 
 ## Conventions
@@ -70,7 +76,6 @@ change an endpoint. A test asserts the core paths are present.
 | SQLite service | `make test-sqlite` | SQL guard, path traversal, CSV handling |
 | API | `make test-server` | Auth, ownership, rate limits, caching |
 | Agent | `make test-agent` | State schema, routing, chart codegen |
-| E2E | `make test-e2e` | Full journeys against the running stack |
 
 Tests are named as statements about behaviour — `test_querying_someone_elses_dataset_is_rejected`
 — so a failure reads as a description of what broke.
@@ -96,5 +101,4 @@ apply, roll back and reapply against a real PostgreSQL instance.
 
 - One concern per PR.
 - Describe what changed and why. If it fixes a bug, say what the bug was.
-- CI must be green. It runs lint, type-check, tests, image builds, Trivy,
-  CodeQL, dependency audit and secret scanning.
+- CI must be green. It runs lint, type-check, every test suite and the image builds.

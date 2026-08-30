@@ -13,7 +13,6 @@ import json
 from typing import Any, Callable, Optional
 
 import redis
-from flask import current_app
 
 from app.utils.logging import get_logger
 

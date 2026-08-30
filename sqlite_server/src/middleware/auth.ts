@@ -14,13 +14,10 @@ const tokensMatch = (provided: string, expected: string): boolean => {
 /**
  * Requires the shared service token on data endpoints.
  *
- * This service is not meant to be reachable from a browser: the Flask API is the
- * only public entry point and it enforces user authentication plus dataset
- * ownership before proxying here.
- *
- * When no token is configured (local development) the check is skipped, but a
- * warning is emitted so the state is never silent. `validateConfig` makes an
- * unset token fatal in production.
+ * The Flask API is the only public entry point; it authenticates the user and
+ * checks dataset ownership before proxying here. With no token configured the
+ * check is skipped and a warning logged — `validateConfig` makes that fatal in
+ * production.
  */
 export const requireServiceToken = (req: Request, res: Response, next: NextFunction): void => {
   if (!config.serviceToken) {

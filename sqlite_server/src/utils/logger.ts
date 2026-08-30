@@ -1,5 +1,4 @@
 import { config } from '../config';
-import { getRequestId } from '../middleware/requestContext';
 
 type Level = 'error' | 'warn' | 'info' | 'debug';
 
@@ -20,20 +19,14 @@ const write = (level: Level, message: string, context?: Record<string, unknown>)
   if (LEVEL_PRIORITY[level] > threshold) return;
 
   const timestamp = new Date().toISOString();
-  // Present when logging inside a request; absent at startup and in the
-  // background cleanup sweep.
-  const requestId = getRequestId();
 
   if (config.isProduction) {
-    process.stdout.write(
-      `${JSON.stringify({ timestamp, level, message, requestId: requestId ?? '-', ...context })}\n`
-    );
+    process.stdout.write(`${JSON.stringify({ timestamp, level, message, ...context })}\n`);
     return;
   }
 
-  const prefix = requestId ? `[${requestId}] ` : '';
   const suffix = context && Object.keys(context).length > 0 ? ` ${JSON.stringify(context)}` : '';
-  process.stdout.write(`${timestamp} [${level.toUpperCase()}] ${prefix}${message}${suffix}\n`);
+  process.stdout.write(`${timestamp} [${level.toUpperCase()}] ${message}${suffix}\n`);
 };
 
 export const logger = {

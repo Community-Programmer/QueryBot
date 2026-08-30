@@ -5,6 +5,7 @@ Every endpoint here requires an authenticated user and verifies that the caller
 owns the dataset being queried. Previously these routes had no authentication at
 all and fell back to a hard-coded dataset identifier when none was supplied.
 """
+import json
 import time
 from datetime import datetime, timezone
 
@@ -27,6 +28,11 @@ langgraph_bp = Blueprint('langgraph', __name__, url_prefix='/api/langgraph')
 # so the prompt stays within budget.
 HISTORY_TURN_LIMIT = 6
 
+# The previous answer is quoted back to the model, so it is trimmed rather than
+# sent whole; the rows themselves are never sent, because the agent re-runs the
+# stored query instead.
+PREVIOUS_ANSWER_CHARS = 1200
+
 
 def _history_for(conversation: Conversation) -> list[dict]:
     """Summarise recent turns for the agent, omitting bulky fields."""
@@ -37,6 +43,44 @@ def _history_for(conversation: Conversation) -> list[dict]:
             entry['sql_query'] = message.sql_query
         turns.append(entry)
     return turns
+
+
+def _previous_result(conversation: Conversation) -> dict | None:
+    """
+    Describe the last answered turn so a follow-up can build on it.
+
+    Only the query and the prose are sent, never the rows: the agent re-executes
+    the stored SQL, which keeps this payload small and guarantees the restyled
+    chart shows the same numbers the first one did.
+    """
+    messages = list(conversation.messages)
+
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if message.role != 'assistant' or not message.sql_query:
+            continue
+
+        # The question that produced it is the nearest preceding user turn.
+        question = next(
+            (
+                earlier.content
+                for earlier in reversed(messages[:index])
+                if earlier.role == 'user'
+            ),
+            None,
+        )
+
+        return {
+            'question': question,
+            'answer': (message.content or '')[:PREVIOUS_ANSWER_CHARS],
+            'sql_query': message.sql_query,
+            'visualization': message.visualization,
+            'chart_spec': message.chart_spec or {},
+            'insights': message.insights,
+            'data_narrative': message.data_narrative,
+        }
+
+    return None
 
 
 @langgraph_bp.route('/run', methods=['POST'])
@@ -88,7 +132,10 @@ def run_agent():
         db.session.add(conversation)
         db.session.flush()
 
+    # Both are read before the new user turn is added, so they describe the state
+    # the question was asked against.
     history = _history_for(conversation)
+    previous = _previous_result(conversation)
 
     db.session.add(Message(conversation_id=conversation.id, role='user', content=question))
     dataset.touch()
@@ -107,7 +154,9 @@ def run_agent():
         message_id: str | None = None
 
         try:
-            for event, result in langgraph_service.stream_run(question, dataset_ref, history):
+            for event, result in langgraph_service.stream_run(
+                question, dataset_ref, history, previous
+            ):
                 accumulated = result
                 yield event
         finally:
@@ -133,7 +182,10 @@ def run_agent():
         mimetype='text/event-stream',
         headers={
             'Cache-Control': 'no-cache, no-transform',
-            'Connection': 'keep-alive',
+            # `Connection` is hop-by-hop and belongs to the server in front, not
+            # to a WSGI app. Advertising keep-alive here contradicted what the
+            # server actually did with a chunked stream, and a client that reused
+            # the connection for its next question hung until it timed out.
             'X-Accel-Buffering': 'no',
             'X-Conversation-Id': conversation_uuid,
         },
@@ -161,6 +213,7 @@ def _persist_assistant_message(conversation_id: str, result: dict, duration_ms: 
         content=result.get('answer') or result.get('error') or '',
         sql_query=result.get('sql_query'),
         visualization=result.get('visualization'),
+        chart_spec=result.get('chart_spec') or None,
         insights=result.get('insights'),
         data_narrative=result.get('data_narrative'),
         formatted_table=result.get('formatted_table'),

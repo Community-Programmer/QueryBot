@@ -1,13 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 
-/**
- * Log one line per completed request.
- *
- * Uses the response 'finish' event rather than monkey-patching `res.end`, which
- * the previous implementation did with a signature that no longer type-checks
- * against Express 5.
- */
+/** Log one line per completed request. */
 export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
   const start = Date.now();
 

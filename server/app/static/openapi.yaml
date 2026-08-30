@@ -20,10 +20,6 @@ info:
     ## Rate limits
     `POST /langgraph/run` calls a paid model several times per question and is
     limited to 20 per hour per user. Responses carry `X-RateLimit-*` headers.
-
-    ## Tracing
-    Every response includes `X-Request-ID`. Supply your own to correlate a call
-    across all four services.
   license:
     name: ISC
 

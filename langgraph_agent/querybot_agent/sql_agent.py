@@ -2,11 +2,12 @@
 SQL generation and execution.
 
 Turns a natural-language question into a validated SQLite query, runs it through
-the dataset service, and picks an appropriate visualization for the result.
+the dataset service, repairs it from the database's own error when it fails, and
+states the result in plain language.
 """
 import logging
 import re
-from typing import Any, Optional
+from typing import Optional
 
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -48,6 +49,25 @@ def _format_history(history: Optional[list[dict]]) -> str:
         if turn.get('sql_query'):
             lines.append(f'  (SQL used: {turn["sql_query"]})')
     return '\n'.join(lines)
+
+
+def _format_previous_query(state: dict) -> str:
+    """
+    Render the last query for the SQL prompt.
+
+    A follow-up like "now break that down by month" is an edit to the previous
+    query, not a fresh problem. Showing it explicitly keeps the filters and joins
+    the user already accepted, which regenerating from the question alone loses.
+    """
+    previous = state.get('previous') or {}
+    query = previous.get('sql_query')
+
+    if not query:
+        return 'None.'
+
+    asked = previous.get('question')
+    lead = f'It answered: {asked}\n' if asked else ''
+    return f'{lead}{query}\n\nEdit this query if the new question refines it. Otherwise ignore it.'
 
 
 def _strip_sql_fences(text: str) -> str:
@@ -171,6 +191,9 @@ OUTPUT: the SQL query only. No markdown, no commentary.'''),
 ===Conversation so far:
 {history}
 
+===Previous query:
+{previous_query}
+
 ===User question:
 {question}
 
@@ -190,6 +213,7 @@ Write the SQL query:'''),
             parsed_question=parsed_question,
             unique_nouns=state.get('unique_nouns', []),
             history=_format_history(state.get('history')),
+            previous_query=_format_previous_query(state),
         )
 
         sql = _strip_sql_fences(response)
@@ -243,8 +267,8 @@ Respond with JSON only:'''),
             return {'sql_query': sql_query, 'sql_valid': True, 'sql_issues': None}
 
         corrected = _strip_sql_fences(str(result.get('corrected_query') or ''))
-        # Guard against a validator that reports a problem but returns nothing
-        # usable - previously that replaced the query with the string "None".
+        # A validator that reports a problem but returns nothing usable would
+        # otherwise replace the query with the string "None".
         if not corrected or corrected.lower() == 'none':
             return {'sql_query': sql_query, 'sql_valid': True, 'sql_issues': result.get('issues')}
 
@@ -347,13 +371,7 @@ Write a corrected SQL query:'''),
         return {'sql_query': repaired, 'sql_repaired': True, 'error': None}
 
     def format_results(self, state: dict) -> dict:
-        """
-        Turn rows into a readable answer.
-
-        The previous implementation pasted the raw Python list into the reply,
-        so users saw output like "[('Health and beauty', 49193.74)]". This asks
-        the model for a sentence a person would actually write.
-        """
+        """Turn rows into a sentence a person would write, not a Python repr."""
         results = state.get('results') or []
         question = state['question']
 
@@ -394,126 +412,3 @@ Answer the question:'''),
             answer = f'The query returned {len(results)} row(s). See the table and chart below.'
 
         return {'answer': answer}
-
-    def choose_visualization(self, state: dict) -> dict:
-        """Pick the chart type that best fits the shape of the result."""
-        results = state.get('results') or []
-        question = state['question']
-
-        if not results:
-            return {'visualization': 'none', 'visualization_reason': 'There is no data to plot.'}
-
-        analysis = self._analyze_results(results, question)
-
-        prompt = ChatPromptTemplate.from_messages([
-            ('system', '''You choose the chart type that communicates a result most clearly.
-
-Options:
-- "bar": compare values across categories (best under 12 categories)
-- "horizontal_bar": many categories, or long category labels
-- "pie": parts of a whole, 2-7 categories only
-- "line": a trend over time or another ordered sequence
-- "scatter": the relationship between two numeric variables
-- "histogram": the distribution of one numeric variable
-- "box": compare distributions across categories
-- "heatmap": a matrix of two categories against a value
-- "none": a single value, or data a chart would not clarify
-
-Respond with JSON only:
-{{"visualization": string, "reason": string, "seaborn_function": string}}'''),
-            ('human', '''Question: {question}
-Rows: {row_count}
-Columns: {column_count}
-Column kinds: {column_kinds}
-Looks time-based: {temporal}
-Distinct labels: {distinct_labels}
-Sample: {sample}
-
-Choose the chart type:'''),
-        ])
-
-        try:
-            result = self.llm_manager.invoke_json(prompt, **analysis)
-            return {
-                'visualization': result.get('visualization', 'bar'),
-                'visualization_reason': result.get('reason', 'Chosen from the shape of the data.'),
-                'seaborn_function': result.get('seaborn_function', 'sns.barplot'),
-            }
-        except Exception as exc:  # noqa: BLE001
-            logger.warning('Visualization selection failed, using the rule-based fallback: %s', exc)
-            return self._fallback_visualization(results)
-
-    def _analyze_results(self, results: list, question: str) -> dict[str, Any]:
-        """Summarise result shape to inform the chart choice."""
-        first_row = results[0] if results else []
-        column_count = len(first_row) if isinstance(first_row, (list, tuple)) else 1
-
-        column_kinds: list[str] = []
-        for index in range(column_count):
-            values = [
-                row[index]
-                for row in results[:50]
-                if isinstance(row, (list, tuple)) and index < len(row) and row[index] is not None
-            ]
-            column_kinds.append('numeric' if self._mostly_numeric(values) else 'categorical')
-
-        labels = {
-            str(row[0])
-            for row in results[:500]
-            if isinstance(row, (list, tuple)) and row and row[0] is not None
-        }
-
-        temporal = bool(
-            re.search(r'\b(date|time|month|year|day|week|quarter|trend|over time)\b', question, re.I)
-        )
-
-        return {
-            'question': question,
-            'row_count': len(results),
-            'column_count': column_count,
-            'column_kinds': ', '.join(column_kinds) or 'unknown',
-            'temporal': temporal,
-            'distinct_labels': len(labels),
-            'sample': results[:10],
-        }
-
-    @staticmethod
-    def _mostly_numeric(values: list) -> bool:
-        """True when at least 70% of the sampled values parse as numbers."""
-        if not values:
-            return False
-
-        numeric = 0
-        for value in values:
-            try:
-                float(value)
-                numeric += 1
-            except (TypeError, ValueError):
-                pass
-        return numeric / len(values) > 0.7
-
-    def _fallback_visualization(self, results: list) -> dict:
-        """Rule-based chart choice used when the model call fails."""
-        first_row = results[0] if results else []
-        column_count = len(first_row) if isinstance(first_row, (list, tuple)) else 1
-        row_count = len(results)
-
-        if column_count < 2 or row_count < 2:
-            return {
-                'visualization': 'none',
-                'visualization_reason': 'A single value is clearer as text than as a chart.',
-                'seaborn_function': '',
-            }
-
-        if row_count > 25:
-            return {
-                'visualization': 'horizontal_bar',
-                'visualization_reason': 'Many categories read more clearly on a horizontal axis.',
-                'seaborn_function': 'sns.barplot',
-            }
-
-        return {
-            'visualization': 'bar',
-            'visualization_reason': 'A bar chart compares values across a small number of categories.',
-            'seaborn_function': 'sns.barplot',
-        }

@@ -44,6 +44,10 @@ class ResponseFinalizer:
             # Recomputed when the insights step was skipped: these are derived
             # from the rows, cost nothing, and matter regardless of that route.
             'data_quality_notes': state.get('data_quality_notes') or self._quality_notes(state),
+            'intent': state.get('intent') or 'new',
+            # Returned so the next turn can build on this styling rather than
+            # resetting it: "make it a pie chart" then "now green" keeps the pie.
+            'chart_spec': state.get('chart_spec') or {},
         }
 
     @staticmethod
@@ -83,6 +87,8 @@ class ResponseFinalizer:
             'error': None,
             'suggested_questions': [],
             'data_quality_notes': [],
+            'intent': 'new',
+            'chart_spec': {},
         }
 
     def create_skip_response(self, skip_type: str) -> Dict[str, Any]:

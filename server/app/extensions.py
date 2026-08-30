@@ -39,7 +39,7 @@ def init_extensions(app):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    
+
     # JWT failures use the same envelope as every other response so the client
     # can handle them uniformly.
     @jwt.expired_token_loader

@@ -76,10 +76,22 @@ def stub_agent(monkeypatch):
     """
     from app.services import langgraph_service
 
-    def _fake_stream(question, dataset_uuid, history=None):
+    calls: list[dict] = []
+
+    def _fake_stream(question, dataset_uuid, history=None, previous=None):
+        # Recorded so tests can assert what context the route handed the agent.
+        calls.append(
+            {
+                'question': question,
+                'dataset_uuid': dataset_uuid,
+                'history': history,
+                'previous': previous,
+            }
+        )
         result = {'answer': f'Stubbed answer for: {question}'}
         yield 'data: {"format_results": {"answer": "Stubbed answer"}}\n\n', result
 
+    _fake_stream.calls = calls  # type: ignore[attr-defined]
     monkeypatch.setattr(langgraph_service, 'stream_run', _fake_stream)
     return _fake_stream
 

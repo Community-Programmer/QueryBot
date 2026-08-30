@@ -88,6 +88,36 @@ describe('mergeUpdate', () => {
     mergeUpdate(original, { format_results: { answer: 'second' } } as StreamUpdate);
     expect(original.answer).toBe('first');
   });
+
+  it('merges a payload from a node that is not a progress step', () => {
+    // `handle_irrelevant` answers off-topic questions but is not one of the
+    // labelled steps, so its answer was being dropped and the reply came back
+    // blank. Any node-shaped payload is now merged, listed or not.
+    const { result, step } = mergeUpdate({}, {
+      handle_irrelevant: { answer: "I answer questions about your dataset." },
+    } as unknown as StreamUpdate);
+
+    expect(result.answer).toBe("I answer questions about your dataset.");
+    expect(step).toBeUndefined();
+  });
+
+  it('carries a refinement through as its own step', () => {
+    const { result, step } = mergeUpdate(
+      { visualization: 'bar' },
+      {
+        apply_refinement: {
+          visualization: 'pie',
+          chart_spec: { chart_type: 'pie', palette: 'Greens', changed: ['chart_type'] },
+          intent: 'restyle',
+        },
+      } as StreamUpdate
+    );
+
+    expect(step).toBe('apply_refinement');
+    expect(result.visualization).toBe('pie');
+    expect(result.chart_spec?.palette).toBe('Greens');
+    expect(result.intent).toBe('restyle');
+  });
 });
 
 /** Build a fetch Response whose body streams the given SSE text chunks. */

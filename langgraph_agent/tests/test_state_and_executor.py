@@ -11,7 +11,7 @@ from langgraph.graph import END, START, StateGraph  # noqa: E402
 
 from querybot_agent.docker_code_executor import DockerCodeExecutor  # noqa: E402
 from querybot_agent.question_classifier import (  # noqa: E402
-    is_question_relevant,
+    route_question,
     should_generate_chart,
     should_generate_insights,
     should_generate_table,
@@ -69,9 +69,24 @@ class TestStateSchema:
 
 class TestRouting:
     def test_irrelevant_questions_bypass_the_sql_pipeline(self):
-        assert is_question_relevant({'is_relevant': False}) == 'handle_irrelevant'
-        assert is_question_relevant({'question_type': 'irrelevant'}) == 'handle_irrelevant'
-        assert is_question_relevant({'is_relevant': True, 'question_type': 'chart'}) == 'process_question'
+        assert route_question({'is_relevant': False}) == 'handle_irrelevant'
+        assert route_question({'question_type': 'irrelevant'}) == 'handle_irrelevant'
+        assert route_question({'is_relevant': True, 'question_type': 'chart'}) == 'process_question'
+
+    def test_a_restyle_skips_the_sql_pipeline(self):
+        state = {
+            'is_relevant': True,
+            'question_type': 'chart',
+            'intent': 'restyle',
+            'chart_spec': {'chart_type': 'pie', 'changed': ['chart_type']},
+        }
+        assert route_question(state) == 'apply_refinement'
+
+        # A restyle intent with nothing to change must not take the shortcut:
+        # re-running the query to render an identical chart would be a no-op.
+        assert route_question({**state, 'chart_spec': {}}) == 'process_question'
+        # Relevance still wins, so "thanks!" after a chart is not a restyle.
+        assert route_question({**state, 'is_relevant': False}) == 'handle_irrelevant'
 
     def test_charts_follow_the_visualization_selector(self):
         base = {'results': [[1, 2]], 'visualization': 'bar'}
@@ -110,6 +125,11 @@ class TestRouting:
         # A single value needs no trend analysis.
         assert should_generate_insights({'results': [[1]]}) == 'finalize'
         assert should_generate_insights({'results': []}) == 'finalize'
+
+    def test_a_restyle_does_not_pay_for_insights_again(self):
+        """The rows are unchanged, so the previous analysis is carried forward."""
+        state = {'results': [[1], [2]], 'intent': 'restyle'}
+        assert should_generate_insights(state) == 'finalize'
 
 
 class TestCodeWrapper:

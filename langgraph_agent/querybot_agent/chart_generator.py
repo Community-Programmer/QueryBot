@@ -27,6 +27,7 @@ from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 
+from querybot_agent.chart_templates import build_chart_code, cmap_of, palette_of
 from querybot_agent.config import settings
 from querybot_agent.docker_code_executor import DockerPythonREPL
 from querybot_agent.llm_manager import LLMManager
@@ -51,9 +52,8 @@ class ChartGenerator:
             self.unavailable_reason = 'The chart sandbox is disabled (CHART_DOCKER_ENABLED=false).'
             return
 
-        # A missing Docker daemon must not take the whole run down: previously the
-        # executor's constructor raised, so every chart question failed outright
-        # instead of returning an answer without a chart.
+        # A missing Docker daemon must not take the whole run down: without a
+        # sandbox the answer still stands, only the model-written fallback is lost.
         try:
             self.repl = DockerPythonREPL(
                 image_name=settings.chart_image_name,
@@ -79,6 +79,12 @@ class ChartGenerator:
         visualization = state.get('visualization', 'none')
         results = state.get('results') or []
         question = state.get('question', '')
+        # Colours the user asked for on this or an earlier turn. Validated
+        # against an allow-list, so an unknown name falls back to the default
+        # rather than making seaborn raise mid-render.
+        chart_spec = state.get('chart_spec')
+        palette = palette_of(chart_spec)
+        cmap = cmap_of(chart_spec)
 
         if visualization in ('none', None, '') or not results:
             return {'chart_image_base64': None, 'chart_generation_error': None}
@@ -92,8 +98,13 @@ class ChartGenerator:
             if self.sandbox_available:
                 # Prefer the sandbox when it exists: it also bounds runaway
                 # memory on a pathological result set.
-                code = self._build_chart_code(
-                    visualization, results, question, f'/app/output/{chart_filename}'
+                code = build_chart_code(
+                    visualization,
+                    results,
+                    question,
+                    f'/app/output/{chart_filename}',
+                    palette,
+                    cmap,
                 )
                 output = self.repl.run(code, output_dir=self.charts_dir)  # type: ignore[union-attr]
                 encoded = self._read_and_cleanup(chart_path)
@@ -107,7 +118,7 @@ class ChartGenerator:
 
             # No sandbox: render the template here. Safe because the template
             # carries no untrusted code, only JSON-encoded data.
-            code = self._build_chart_code(visualization, results, question, chart_path)
+            code = build_chart_code(visualization, results, question, chart_path, palette, cmap)
             self._render_in_process(code)
 
             encoded = self._read_and_cleanup(chart_path)
@@ -129,7 +140,7 @@ class ChartGenerator:
         """
         Execute a template-generated script in this process.
 
-        Only ever called with output from `_build_chart_code`, whose plotting body
+        Only ever called with output from `build_chart_code`, whose plotting body
         comes from a fixed set of templates and whose data and title are JSON
         literals — no caller-supplied text becomes code. Model-written code is
         never passed here.
@@ -236,171 +247,6 @@ class ChartGenerator:
         )
 
         return create_react_agent(self.llm_manager.llm, [docker_python_executor], prompt=system_prompt)
-
-    def _build_chart_code(
-        self,
-        visualization: str,
-        results: list,
-        question: str,
-        output_path: str,
-    ) -> str:
-        """
-        Build the plotting script.
-
-        Values are injected as JSON literals rather than interpolated into
-        generated f-strings. The previous approach embedded the raw question into
-        an f-string in the generated code, so any question containing a brace
-        produced invalid Python and any apostrophe risked breaking out of the
-        literal.
-
-        `output_path` is where the figure is written: a path inside the container
-        mount for the sandbox, or a local path when rendering in-process.
-        """
-        title = json.dumps(f'{visualization.replace("_", " ").title()}: {question}'[:120])
-        data_literal = json.dumps(results, default=str)
-        output_literal = json.dumps(output_path.replace('\\', '/'))
-
-        preamble = f'''
-import json
-import os
-
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import seaborn as sns
-
-sns.set_theme(style="whitegrid", palette="husl")
-sns.set_context("notebook", font_scale=1.1)
-
-DATA = json.loads({json.dumps(data_literal)})
-TITLE = {title}
-OUTPUT_PATH = {output_literal}
-
-# Derived from the output path so the same template works inside the container
-# mount and against a local directory.
-os.makedirs(os.path.dirname(OUTPUT_PATH) or ".", exist_ok=True)
-
-if not DATA:
-    raise SystemExit("No data to plot")
-
-# Name columns by position: two columns read as category/value, three add a series.
-COLUMN_COUNT = len(DATA[0]) if isinstance(DATA[0], (list, tuple)) else 1
-if COLUMN_COUNT == 2:
-    df = pd.DataFrame(DATA, columns=["Category", "Value"])
-elif COLUMN_COUNT == 3:
-    df = pd.DataFrame(DATA, columns=["Category", "Series", "Value"])
-else:
-    df = pd.DataFrame(DATA, columns=[f"Column_{{i + 1}}" for i in range(COLUMN_COUNT)])
-
-# Values arrive from JSON as strings when SQLite stored them as text.
-if "Value" in df.columns:
-    df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
-
-df = df.dropna()
-if df.empty:
-    raise SystemExit("No usable rows after cleaning")
-
-plt.figure(figsize=(12, 8))
-has_series = "Series" in df.columns
-'''
-
-        bodies = {
-            'line': '''
-if has_series:
-    sns.lineplot(data=df, x="Category", y="Value", hue="Series", marker="o")
-    plt.legend(title="Series", bbox_to_anchor=(1.02, 1), loc="upper left")
-else:
-    sns.lineplot(data=df, x="Category", y="Value", marker="o", linewidth=2.5)
-plt.xticks(rotation=45, ha="right")
-plt.xlabel("Category")
-plt.ylabel("Value")
-''',
-            'horizontal_bar': '''
-if has_series:
-    sns.barplot(data=df, y="Category", x="Value", hue="Series", orient="h")
-    plt.legend(title="Series", bbox_to_anchor=(1.02, 1), loc="upper left")
-else:
-    sns.barplot(data=df, y="Category", x="Value", hue="Category", legend=False, orient="h")
-plt.xlabel("Value")
-plt.ylabel("Category")
-''',
-            'pie': '''
-totals = df.groupby("Category")["Value"].sum().sort_values(ascending=False)
-# Too many slices are unreadable; group the tail into "Other".
-if len(totals) > 8:
-    head = totals.head(7)
-    totals = pd.concat([head, pd.Series({"Other": totals.iloc[7:].sum()})])
-plt.pie(
-    totals.values,
-    labels=totals.index.astype(str),
-    autopct="%1.1f%%",
-    startangle=90,
-    colors=sns.color_palette("husl", len(totals)),
-)
-plt.axis("equal")
-''',
-            'scatter': '''
-df["Category"] = pd.to_numeric(df["Category"], errors="coerce")
-df = df.dropna()
-if has_series:
-    sns.scatterplot(data=df, x="Category", y="Value", hue="Series", s=120, alpha=0.85)
-    plt.legend(title="Series", bbox_to_anchor=(1.02, 1), loc="upper left")
-else:
-    sns.regplot(data=df, x="Category", y="Value", scatter_kws={"s": 120, "alpha": 0.85})
-plt.xlabel("X")
-plt.ylabel("Y")
-''',
-            'histogram': '''
-sns.histplot(data=df, x="Value", bins=min(30, max(5, len(df) // 2)), kde=True)
-mean_value = df["Value"].mean()
-plt.axvline(mean_value, color="crimson", linestyle="--", linewidth=2, label=f"Mean: {mean_value:,.2f}")
-plt.legend()
-plt.xlabel("Value")
-plt.ylabel("Frequency")
-''',
-            'box': '''
-if has_series:
-    sns.boxplot(data=df, x="Category", y="Value", hue="Series")
-else:
-    sns.boxplot(data=df, x="Category", y="Value", hue="Category", legend=False)
-plt.xticks(rotation=45, ha="right")
-''',
-            'heatmap': '''
-if has_series:
-    pivot = df.pivot_table(index="Category", columns="Series", values="Value", aggfunc="sum")
-else:
-    pivot = df.set_index("Category")[["Value"]]
-sns.heatmap(pivot, annot=True, fmt=".1f", cmap="YlGnBu", linewidths=0.5)
-''',
-        }
-
-        default_body = '''
-if has_series:
-    sns.barplot(data=df, x="Category", y="Value", hue="Series")
-    plt.legend(title="Series", bbox_to_anchor=(1.02, 1), loc="upper left")
-else:
-    ax = sns.barplot(data=df, x="Category", y="Value", hue="Category", legend=False)
-    for container in ax.containers:
-        ax.bar_label(container, fmt="%.1f", padding=2, fontsize=9)
-plt.xticks(rotation=45, ha="right")
-plt.xlabel("Category")
-plt.ylabel("Value")
-'''
-
-        body = bodies.get(visualization, default_body)
-
-        epilogue = '''
-plt.title(TITLE, fontsize=15, fontweight="bold", pad=16)
-plt.tight_layout()
-plt.savefig(OUTPUT_PATH, dpi=150, bbox_inches="tight", facecolor="white")
-plt.close()
-print(f"Chart written to {OUTPUT_PATH}")
-'''
-
-        return preamble + body + epilogue
-
 
 # Constructing a ChartGenerator probes Docker and may build an image, which is
 # far too expensive to repeat for every chart. The instance is created once and

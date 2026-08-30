@@ -223,19 +223,12 @@ only event that requires eviction is deleting a dataset, which drops the whole
 `querybot:dataset:<uuid>:*` prefix via `SCAN` — never `KEYS`, which blocks the
 Redis event loop for the duration of the scan.
 
-## Observability
+## Logging
 
-**Correlation ids.** Every request gets an id, attached to its log lines,
-returned as `X-Request-ID` and forwarded to the internal services. One user
-action is greppable across four log streams instead of matched by timestamp.
-
-**Structured logs.** JSON in production for machine indexing; human-readable
-locally.
-
-**Liveness vs readiness.** `/health` says the process is alive — failing it
-should restart the container. `/ready` says it can serve traffic — failing it
-should only remove the instance from the load balancer. Restarting a pod because
-Redis blipped would be the wrong response, which is why they are separate.
+JSON in production so a log aggregator can index it; human-readable locally.
+Each service exposes `/health`, which checks the dependency it cannot work
+without — the database for the API, a writable uploads directory for the dataset
+service.
 
 ---
 
@@ -447,3 +440,57 @@ array.
 full control over null ordering and numeric-versus-lexicographic sorting (the
 bug where `9` sorts above `10`). A virtualised grid over 100k rows would justify
 the library; capped at 5,000 rows, it does not.
+
+### ADR-013 — Restyle the previous result instead of re-answering the question
+
+**Context.** "Make it a pie chart" is a follow-up about the answer already on
+screen, not a new question about the data. Routing it through the normal workflow
+costs six model calls and regenerates the SQL from scratch, so the second chart is
+built from a query the model wrote independently of the first. On anything with a
+filter or a join, that query differs — the user asks for a colour change and the
+numbers move.
+
+**Decision.** Classify each turn as `new`, `requery` or `restyle`, and give
+`restyle` its own path: re-execute the stored SQL verbatim, apply the requested
+presentation change, re-render. Detection rides along with the existing question
+classifier rather than adding a node, so a first question makes exactly as many
+model calls as it did before. Chart type, palette, sort and row limit are the
+recognised changes, each validated against an allow-list; anything outside them is
+classified as `requery` rather than approximated.
+
+**Alternatives considered.** Sending the previous rows back to the agent, which
+avoids the database round trip but puts up to 5,000 rows in every request payload
+and needs a truncation rule that would silently change what the chart shows.
+Re-generating the SQL with the previous query as context — cheaper to build, but
+it still spends the model calls and still permits drift. Re-executing is a
+millisecond-scale SQLite query and makes drift structurally impossible.
+
+**Consequences.** A restyle is one classification call and one query rather than
+six calls, and the numbers are guaranteed identical because the query is byte-for-
+byte the same. Insights are carried forward when only the presentation changed and
+dropped when a sort or limit changed the rows, so the prose never describes rows
+that are no longer on screen. Styling is persisted per message, which is what lets
+it accumulate: a pie chart stays a pie chart when the next turn asks for green.
+A wrong classification degrades to the full workflow rather than to a wrong chart —
+every failure path in the parser returns `new`.
+
+### ADR-014 — One provider abstraction over four LLM vendors
+
+**Context.** The agent was wired directly to `ChatGroq`. Being locked to one
+vendor is a real constraint — model retirements have broken runs twice — and
+different deployments have different cost and capability needs.
+
+**Decision.** Route every call through `LLMManager`, selected by `LLM_PROVIDER`
+(Groq, OpenAI, Anthropic, Google) with a per-provider default model that
+`LLM_MODEL` overrides. Integrations are imported lazily, so a missing package
+reports which one to install rather than failing at import.
+
+**Consequences.** Switching vendor is one environment variable, and no node knows
+which one is in use. Two provider-specific details had to be absorbed rather than
+abstracted away: current Claude models reject `temperature` outright — a request
+carrying it returns a 400, not a warning — so it is omitted for those models and
+determinism comes from the prompts; and Google names the output cap
+`max_output_tokens` where the others use `max_tokens`. Both live in a table in one
+file. Response flattening also had to become provider-aware: reasoning models
+return content as a list of blocks including thinking blocks with no `text` field,
+and stringifying those put their repr inside the JSON the caller then parses.

@@ -79,8 +79,16 @@ services:
       context: ./langgraph_agent
     <<: *restart
     environment:
-      GROQ_API_KEY: ${GROQ_API_KEY:?GROQ_API_KEY is required}
-      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      # Any one of the four providers can serve the model calls. Only the key for
+      # the selected one is needed; the agent refuses to start with a clear
+      # message naming the variable when it is missing, so none is required here.
+      LLM_PROVIDER: ${LLM_PROVIDER:-groq}
+      LLM_MODEL: ${LLM_MODEL:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       SQLITE_SERVICE_URL: http://sqlite-service:3001
       SERVICE_TOKEN: ${SERVICE_TOKEN:?SERVICE_TOKEN is required}
       CHART_DOCKER_ENABLED: ${CHART_DOCKER_ENABLED:-false}

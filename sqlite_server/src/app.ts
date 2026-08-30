@@ -3,7 +3,6 @@ import cors from 'cors';
 import fs from 'fs';
 import { config } from './config';
 import { errorHandler } from './middleware/errorHandler';
-import { requestContext } from './middleware/requestContext';
 import { requestLogger } from './middleware/requestLogger';
 import apiRoutes from './routes';
 
@@ -34,35 +33,24 @@ app.use((_req: Request, res: Response, next) => {
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-// Must precede the logger so every log line carries the correlation id.
-app.use(requestContext);
 app.use(requestLogger);
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'ok',
+  // The service cannot do its job without a writable uploads directory.
+  let storage = 'ok';
+  try {
+    fs.accessSync(config.uploadDir, fs.constants.W_OK);
+  } catch {
+    storage = 'unwritable';
+  }
+
+  res.status(storage === 'ok' ? 200 : 503).json({
+    status: storage === 'ok' ? 'ok' : 'degraded',
+    storage,
     uptime: process.uptime(),
     environment: config.nodeEnv,
     timestamp: new Date().toISOString(),
   });
-});
-
-/**
- * Readiness, as distinct from liveness: this reports whether the service can
- * actually do its job, which here means the uploads directory is writable.
- */
-app.get('/ready', (_req: Request, res: Response) => {
-  const checks: Record<string, string> = {};
-
-  try {
-    fs.accessSync(config.uploadDir, fs.constants.W_OK);
-    checks.storage = 'ok';
-  } catch {
-    checks.storage = 'unwritable';
-  }
-
-  const ready = checks.storage === 'ok';
-  res.status(ready ? 200 : 503).json({ ready, checks, timestamp: new Date().toISOString() });
 });
 
 app.use('/', apiRoutes);

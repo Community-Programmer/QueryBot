@@ -7,7 +7,7 @@
 
 .DEFAULT_GOAL := help
 .PHONY: help setup up down logs restart clean install test test-client test-server \
-        test-sqlite test-agent test-e2e lint typecheck check build migrate shell-db
+        test-sqlite test-agent lint typecheck check build migrate shell-db
 
 # ---------------------------------------------------------------------------
 help:
@@ -93,9 +93,6 @@ test-server:
 
 test-agent:
 	cd langgraph_agent && GROQ_API_KEY=test CHART_DOCKER_ENABLED=false uv run pytest -q
-
-test-e2e:
-	cd e2e && npx playwright test
 
 lint:
 	cd client && npm run lint

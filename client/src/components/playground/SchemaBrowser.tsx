@@ -34,12 +34,7 @@ const shortType = (type: string): string => {
   return normalized.toLowerCase() || 'any';
 };
 
-/**
- * Lists the tables and columns in a dataset, with a row preview.
- *
- * Users previously had to guess what their uploaded data contained, which made
- * writing a useful question largely trial and error.
- */
+/** Lists the tables and columns in a dataset, with a row preview. */
 const SchemaBrowser = ({ datasetUuid, tables, isLoading }: SchemaBrowserProps) => {
   const [expanded, setExpanded] = useState<string | null>(tables[0]?.name ?? null);
   const [preview, setPreview] = useState<TablePreview | null>(null);

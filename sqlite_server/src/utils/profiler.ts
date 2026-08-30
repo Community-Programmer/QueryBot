@@ -8,15 +8,11 @@ import type {
 } from '../types/sqlite';
 
 /**
- * Dataset profiling.
+ * Dataset profiling: the shape of each column, what is missing, what is skewed,
+ * and which columns move together.
  *
- * Runs immediately after upload so a user learns what their data contains before
- * asking anything — the shape of each column, what is missing, what is skewed,
- * and which columns move together. Without this, the first few questions are
- * spent discovering the schema by trial and error.
- *
- * Everything is computed in SQL against the uploaded database. No model is
- * involved, so it is fast, free and exact.
+ * Computed in SQL against the uploaded database, so it is exact and involves no
+ * model call.
  */
 
 /** Buckets in a numeric column's histogram. Enough shape for a sparkline. */

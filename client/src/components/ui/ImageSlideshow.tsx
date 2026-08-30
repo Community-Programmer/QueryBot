@@ -23,12 +23,8 @@ interface ImageSlideshowProps {
 /**
  * Auto-advancing image carousel with keyboard, pointer and dot navigation.
  *
- * Two bugs from the previous implementation are fixed here: the keyboard
- * listener was registered in a `useEffect` placed *after* the component's
- * `return`, so it was unreachable and arrow keys never worked; and the progress
- * bar advanced via a `setProgress` interval that fired every 50ms, re-rendering
- * the whole carousel 20 times a second. Progress is now a CSS animation keyed to
- * the slide, so it costs nothing per frame.
+ * The progress bar is a CSS animation keyed to the slide rather than a timer, so
+ * it costs no re-renders.
  */
 const ImageSlideshow = ({
   images,

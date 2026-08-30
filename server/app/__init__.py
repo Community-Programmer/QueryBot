@@ -9,10 +9,9 @@ from sqlalchemy import text
 
 from app.config import config
 from app.extensions import db, init_extensions
-from app.utils.cache import get_client as get_cache_client, init_cache
+from app.utils.cache import init_cache
 from app.utils.logging import configure_logging, get_logger
 from app.utils.rate_limit import init_rate_limiting
-from app.utils.request_context import init_request_context
 from app.utils.schema_check import check_pending_migrations
 
 logger = get_logger(__name__)
@@ -48,14 +47,11 @@ def create_app(config_name: str | None = None) -> Flask:
         origins=app.config['CORS_ORIGINS'],
         allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-TOKEN'],
         supports_credentials=True,
-        # Flask-CORS names this option `methods`; the previous `allow_methods`
-        # was silently discarded, so the list had no effect at all.
         methods=['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-        expose_headers=['X-Request-ID', 'X-Conversation-Id'],
+        expose_headers=['X-Conversation-Id'],
     )
 
     init_extensions(app)
-    init_request_context(app)
     init_cache(app)
     init_rate_limiting(app)
 
@@ -93,14 +89,7 @@ def register_blueprints(app: Flask) -> None:
 
 
 def register_health_checks(app: Flask) -> None:
-    """
-    Liveness and readiness endpoints.
-
-    They are deliberately different: liveness answers "is this process alive",
-    and an orchestrator restarts the container when it fails. Readiness answers
-    "can it serve traffic", and only removes the instance from the load
-    balancer. Restarting a pod because Redis is briefly down would be wrong.
-    """
+    """Register the root and health endpoints."""
 
     @app.route('/')
     def index():
@@ -108,33 +97,13 @@ def register_health_checks(app: Flask) -> None:
 
     @app.route('/health')
     def health():
-        return {'status': 'healthy'}
-
-    @app.route('/ready')
-    def ready():
-        checks: dict[str, str] = {}
-
         try:
             db.session.execute(text('SELECT 1'))
-            checks['database'] = 'ok'
         except Exception as exc:  # noqa: BLE001
-            logger.warning('Readiness check failed for the database: %s', exc)
-            checks['database'] = 'unavailable'
+            logger.warning('Health check failed: %s', exc)
+            return {'status': 'unhealthy', 'database': 'unavailable'}, 503
 
-        client = get_cache_client()
-        if client is None:
-            # Not configured, or degraded to a no-op. The app still works.
-            checks['cache'] = 'disabled'
-        else:
-            try:
-                client.ping()
-                checks['cache'] = 'ok'
-            except Exception:  # noqa: BLE001
-                checks['cache'] = 'unavailable'
-
-        # Only the database is required to serve requests.
-        is_ready = checks['database'] == 'ok'
-        return {'ready': is_ready, 'checks': checks}, (200 if is_ready else 503)
+        return {'status': 'healthy', 'database': 'ok'}
 
 
 def register_error_handlers(app: Flask) -> None:

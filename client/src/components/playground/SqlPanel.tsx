@@ -21,9 +21,8 @@ interface SqlPanelProps {
  * so fixing a wrong column is instant and costs nothing.
  *
  * The caller keys this component on the SQL string, so new SQL remounts it and
- * clears the draft, the previous result and any error. That replaces a
- * reset-on-prop-change effect, which caused an extra render pass on every
- * question and briefly showed the old result against the new query.
+ * clears the draft, the last result and any error in one step — no reset effect,
+ * and no frame showing the old result against the new query.
  */
 const SqlPanel = ({ sql, datasetUuid, sqlIssues }: SqlPanelProps) => {
   const [draft, setDraft] = useState(sql);

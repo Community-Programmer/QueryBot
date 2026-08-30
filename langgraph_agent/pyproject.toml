@@ -6,7 +6,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "langchain>=1.0.4",
+    # One integration per supported LLM_PROVIDER. All four are installed so the
+    # provider is a runtime choice; llm_manager imports only the one in use.
     "langchain-groq>=1.0.0",
+    "langchain-openai>=1.0.0",
+    "langchain-anthropic>=1.0.0",
+    "langchain-google-genai>=3.0.0",
     "langgraph>=1.0.2",
     "langgraph-cli[inmem]>=0.4.7",
     "python-dotenv>=1.2.1",

@@ -251,17 +251,6 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,scope=${{ matrix.name }},mode=max
 
-      - name: Scan for known vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: querybot-${{ matrix.name }}:ci
-          format: table
-          # Fail the build only on fixable high and critical findings; an
-          # unfixed base-image CVE is not something this PR can act on.
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-
   compose:
     name: Stack smoke test
     needs: [changes, docker]

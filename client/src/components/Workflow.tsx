@@ -51,7 +51,7 @@ const Workflow = () => {
                     <step.icon className="w-10 h-10 text-white" />
                   </div>
                 </div>
-                
+
                 <div className="text-6xl font-bold gradient-text mb-4">{step.number}</div>
                 <h3 className="text-2xl font-semibold mb-3">{step.title}</h3>
                 <p className="text-muted-foreground">{step.description}</p>

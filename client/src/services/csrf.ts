@@ -1,14 +1,11 @@
 /**
  * CSRF double-submit token handling.
  *
- * In production the API enables `JWT_COOKIE_CSRF_PROTECT`, which requires
- * mutating requests to echo a token in a header. The auth cookies themselves are
- * `httpOnly` and unreadable, but the server also sets companion
- * `csrf_access_token` / `csrf_refresh_token` cookies that are deliberately
- * readable so the client can copy them into the header.
- *
- * The point of the pattern: an attacker on another origin can cause the browser
- * to *send* cookies, but cannot *read* them, so cannot populate the header.
+ * In production the API requires mutating requests to echo a token in a header.
+ * The auth cookies are `httpOnly`, but the companion `csrf_access_token` /
+ * `csrf_refresh_token` cookies are deliberately readable so the client can copy
+ * them across: another origin can make the browser send cookies, but not read
+ * them, so it cannot populate the header.
  */
 
 /** Header the API expects. Matches JWT_ACCESS_CSRF_HEADER_NAME. */

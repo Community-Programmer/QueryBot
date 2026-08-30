@@ -96,9 +96,8 @@ type ColumnType = 'INTEGER' | 'REAL' | 'TEXT';
 /**
  * Infer a column type from sampled values.
  *
- * The previous implementation stored every column as TEXT, which made SQLite
- * compare numbers lexicographically - "9" sorted above "10", so MAX, ORDER BY
- * and every numeric aggregate silently returned wrong answers.
+ * Storing numbers as TEXT would make SQLite compare them lexicographically, so
+ * "9" would sort above "10" and every numeric aggregate would be wrong.
  */
 const inferColumnType = (values: string[]): ColumnType => {
   const present = values.filter((value) => value !== '' && value != null);

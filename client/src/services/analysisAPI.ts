@@ -32,15 +32,16 @@ const RESULT_KEYS: (keyof AnalysisResult)[] = [
   'data_quality_notes',
   'sql_attempts',
   'sql_repaired',
+  'intent',
+  'chart_spec',
 ];
 
 /**
  * Fold one streamed update into the accumulated result.
  *
- * The agent streams `{ nodeName: { ...fields } }`. Previously the page component
- * unpacked each node name with a bespoke branch, so every new node needed
- * another branch and any node without one was dropped. Here the node wrapper is
- * unwrapped generically and only known result keys are copied across.
+ * The agent streams `{ nodeName: { ...fields } }`. The node wrapper is unwrapped
+ * generically rather than per node, so adding a node to the graph needs no change
+ * here; only recognised result keys are copied across.
  */
 export const mergeUpdate = (
   current: AnalysisResult,
@@ -50,22 +51,27 @@ export const mergeUpdate = (
   let step: WorkflowStep | undefined;
 
   for (const [key, value] of Object.entries(update)) {
+    // Record the step even when the payload is null. The agent's output schema
+    // filters intermediate keys out of the stream, so nodes that write only
+    // intermediate state arrive as `{"parse_question": null}` — skipping those
+    // left the progress indicator stuck on the first step for the whole run.
     if (WORKFLOW_STEP_SET.has(key)) {
-      // Record the step even when the payload is null. The agent's output schema
-      // filters intermediate keys out of the stream, so nodes that write only
-      // intermediate state arrive as `{"parse_question": null}` — skipping those
-      // left the progress indicator stuck on the first step for the whole run.
       step = key as WorkflowStep;
-      if (value !== null && typeof value === 'object') {
-        Object.assign(result, pickResultFields(value as Record<string, unknown>));
-      }
-      continue;
     }
 
     if (value == null) continue;
 
     if ((RESULT_KEYS as string[]).includes(key)) {
       Object.assign(result, pickResultFields({ [key]: value }));
+      continue;
+    }
+
+    // Any other object is a node payload. Merging it without requiring the node
+    // to be listed above is what makes routes that bypass the normal pipeline
+    // work: `handle_irrelevant` is not a progress step, and its answer was being
+    // dropped entirely, so asking something off-topic produced a blank reply.
+    if (typeof value === 'object') {
+      Object.assign(result, pickResultFields(value as Record<string, unknown>));
     }
   }
 

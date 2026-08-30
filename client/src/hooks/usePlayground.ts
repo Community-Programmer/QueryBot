@@ -35,6 +35,7 @@ const fromStored = (stored: StoredMessage): ChatMessage => ({
           answer: stored.content,
           sql_query: stored.sql_query,
           visualization: stored.visualization,
+          chart_spec: stored.chart_spec,
           insights: stored.insights,
           data_narrative: stored.data_narrative,
           formatted_table: stored.formatted_table,
@@ -50,9 +51,8 @@ const fromStored = (stored: StoredMessage): ChatMessage => ({
  * Owns all Playground state: the active dataset, the conversation thread, the
  * streaming run, and the history list.
  *
- * Keeping this out of the page component is what allows a conversation to be
- * reopened - results now live in messages rather than in a single mutable blob
- * that each new question overwrote.
+ * Results live on individual messages rather than one mutable blob, which is
+ * what lets a past conversation be reopened with its charts intact.
  */
 export const usePlayground = () => {
   const [dataset, setDataset] = useState<Dataset | null>(null);

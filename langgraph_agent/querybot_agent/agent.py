@@ -24,6 +24,7 @@ class QueryBotAgent:
         question: str,
         database_uuid: str,
         history: Optional[list[dict]] = None,
+        previous: Optional[dict] = None,
     ) -> Dict[str, Any]:
         """
         Answer one question.
@@ -32,12 +33,15 @@ class QueryBotAgent:
             question: The natural-language question.
             database_uuid: Identifier of the dataset to query.
             history: Prior conversation turns, used to resolve follow-ups.
+            previous: The last answered turn. Supplying it lets a follow-up such
+                as "make it a pie chart" restyle that result instead of asking the
+                data again.
 
         Returns:
             The answer plus the SQL, chart, table and insights that support it.
         """
         try:
-            return self.workflow_manager.run_sql_agent(question, database_uuid, history)
+            return self.workflow_manager.run_sql_agent(question, database_uuid, history, previous)
         except Exception as exc:  # noqa: BLE001 - returned to the caller, not raised
             logger.exception('Query failed')
             return {
@@ -54,6 +58,10 @@ class QueryBotAgent:
                 'results': [],
                 'result_columns': [],
                 'error': str(exc),
+                'suggested_questions': [],
+                'data_quality_notes': [],
+                'intent': 'new',
+                'chart_spec': {},
             }
 
     def get_workflow_graph(self):
@@ -65,6 +73,7 @@ def ask_question(
     question: str,
     database_uuid: str,
     history: Optional[list[dict]] = None,
+    previous: Optional[dict] = None,
 ) -> Dict[str, Any]:
     """Answer a single question without managing an agent instance."""
-    return QueryBotAgent().query(question, database_uuid, history)
+    return QueryBotAgent().query(question, database_uuid, history, previous)

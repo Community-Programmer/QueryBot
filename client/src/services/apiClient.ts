@@ -42,11 +42,8 @@ attachCsrf(plainApi);
 const AUTH_PATHS = ['/auth/refresh', '/auth/login', '/auth/signup'];
 
 /**
- * In-flight refresh, shared by every request that 401s concurrently.
- *
- * The previous implementation used module-level boolean flags, so simultaneous
- * 401s either fired duplicate refreshes or were rejected outright rather than
- * waiting for the one in progress.
+ * In-flight refresh, shared by every request that 401s concurrently, so a burst
+ * of them waits on one refresh instead of firing several.
  */
 let refreshInFlight: Promise<void> | null = null;
 

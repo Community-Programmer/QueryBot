@@ -19,11 +19,9 @@ const noopSubscribe = () => () => {};
 /**
  * Three-way theme switch.
  *
- * Renders a fixed-size placeholder until mounted: the resolved theme is unknown
- * during first paint, and swapping icons afterwards would shift the surrounding
- * layout. `useSyncExternalStore` supplies that mounted flag by returning a
- * different value on the client than during the initial pass, avoiding a
- * setState-in-effect that would trigger a second render pass.
+ * Renders a fixed-size placeholder until mounted, because the resolved theme is
+ * unknown during first paint and swapping icons later would shift the layout.
+ * `useSyncExternalStore` supplies the mounted flag without a setState-in-effect.
  */
 const ThemeToggle = ({ className }: ThemeToggleProps) => {
   const { theme, setTheme } = useTheme();

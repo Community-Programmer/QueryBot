@@ -15,6 +15,9 @@ export type VisualizationType =
 /** Workflow nodes, in the order the agent runs them. */
 export const WORKFLOW_STEPS = [
   'classify_question',
+  // Taken instead of the SQL steps when a follow-up only restyles the previous
+  // result, so the progress indicator jumps straight from here to the chart.
+  'apply_refinement',
   'parse_question',
   'get_unique_nouns',
   'generate_sql',
@@ -62,6 +65,25 @@ export interface AnalysisResult {
   sql_attempts?: number;
   /** True when a failing query was rewritten from the database's error. */
   sql_repaired?: boolean;
+  /** How the turn was handled: a new question, a re-query, or a restyle. */
+  intent?: 'new' | 'requery' | 'restyle';
+  /** Presentation choices in effect, carried forward across follow-ups. */
+  chart_spec?: ChartSpec;
+}
+
+/** Presentation choices a follow-up can change without re-asking the question. */
+export interface ChartSpec {
+  chart_type?: VisualizationType;
+  palette?: string;
+  sort?: 'asc' | 'desc';
+  limit?: number;
+  /** Which of the above this turn actually changed. */
+  changed?: string[];
+  /**
+   * The prose describing the numbers, carried forward so a run of follow-ups
+   * shows one confirmation and one finding rather than a stack of confirmations.
+   */
+  finding?: string;
 }
 
 /**
@@ -119,6 +141,7 @@ export interface StoredMessage {
   created_at: string | null;
   sql_query?: string;
   visualization?: VisualizationType;
+  chart_spec?: ChartSpec;
   insights?: string;
   data_narrative?: string;
   formatted_table?: string;
@@ -146,6 +169,7 @@ export const SAMPLE_QUESTIONS = [
 /** Human-readable label for each workflow step. */
 export const STEP_LABELS: Record<WorkflowStep, string> = {
   classify_question: 'Understanding your question',
+  apply_refinement: 'Updating the previous result',
   parse_question: 'Finding the relevant tables',
   get_unique_nouns: 'Reading the actual values',
   generate_sql: 'Writing the SQL',

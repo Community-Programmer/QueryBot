@@ -1,7 +1,6 @@
 # QueryBot
 
 [![CI](https://github.com/VedikaPande/QueryBot/actions/workflows/ci.yml/badge.svg)](https://github.com/VedikaPande/QueryBot/actions/workflows/ci.yml)
-[![Security](https://github.com/VedikaPande/QueryBot/actions/workflows/security.yml/badge.svg)](https://github.com/VedikaPande/QueryBot/actions/workflows/security.yml)
 [![License: ISC](https://img.shields.io/badge/license-ISC-blue.svg)](#licence)
 
 > Ask questions about your data in plain English and get answers, charts and SQL back.
@@ -38,6 +37,13 @@ answer: that a total covers 2 of 4 rows because the rest are null, that one
 extreme value is skewing an average, that the result hit the row cap and may be
 incomplete.
 
+**You can talk to the chart.** "Make it a pie chart", "use warmer colours",
+"top 5 only" — these change the answer you are already looking at instead of
+asking the data again. The previous query is re-executed rather than rewritten, so
+the numbers cannot drift between the two charts, and the turn costs one
+classification call instead of six. Styling accumulates: ask for a pie chart, then
+for green, and you get a green pie chart.
+
 **Findings don't evaporate.** Pin any result to a dashboard, resize and reorder
 the tiles, switch a tile between its chart, table and answer — then share the
 whole thing with a link that works without an account. The shared view is a
@@ -47,7 +53,8 @@ immediately.
 
 Also:
 
-- **Multi-turn conversations** — "now break that down by region" resolves against earlier turns
+- **Multi-turn conversations** — "now break that down by region" resolves against earlier turns, and edits the previous query rather than starting over
+- **Four model providers** — Groq, OpenAI, Anthropic or Google, selected with one environment variable
 - **Query history** — every analysis is saved with its chart, SQL and rows, and can be reopened
 - **See and edit the SQL** — correct the generated query and re-run it instantly, with no model call
 - **Automatic charts** — bar, line, pie, scatter, histogram, box and heatmap, chosen to fit the result
@@ -90,7 +97,7 @@ reachable from the public internet.
 | **Client** | React 19, TypeScript, Vite 8, Tailwind 4 | Interface | 5173 |
 | **Flask API** | Flask, SQLAlchemy, JWT | Auth, ownership, history, proxying | 5000 |
 | **SQLite service** | Node, Express 5, better-sqlite3 | Dataset storage and read-only queries | 3001 |
-| **LangGraph agent** | Python, LangGraph, Groq | NL→SQL, charts, insights | 8000 |
+| **LangGraph agent** | Python, LangGraph, Groq/OpenAI/Anthropic/Gemini | NL→SQL, charts, insights | 8000 |
 
 ## Security model
 
@@ -122,7 +129,9 @@ reachable from the public internet.
 
 ## Quick start
 
-Needs Docker and a free [Groq API key](https://console.groq.com).
+Needs Docker and one model provider key. Groq is the default and
+[free](https://console.groq.com); OpenAI, Anthropic and Gemini work too — set
+`LLM_PROVIDER` and that provider's key instead.
 
 ```bash
 make setup                  # writes .env with generated secrets
@@ -141,23 +150,19 @@ Prefer to run the services natively? See **[SETUP.md](./SETUP.md)**.
 
 ```bash
 make test          # every suite
-make test-e2e      # Playwright, against the running stack
 make check         # everything CI runs: typecheck + lint + tests
 ```
 
 | Suite | Covers |
 |---|---|
-| **Client** (69) | SSE stream merging, CSV formula-injection escaping, table sorting, profile and dashboard rendering |
-| **SQLite service** (43) | SQL allow-list, path traversal, CSV sanitisation, profiling accuracy against a real database |
-| **API** (57) | Authentication, dataset and dashboard ownership, share-link revocation, rate limits, cascade integrity |
-| **Agent** (51) | Self-correction routing and termination, state-schema persistence, chart codegen, data-quality notes |
-| **E2E** (26) | Sign-up, upload, ask, edit-and-rerun SQL, theme persistence — desktop and mobile |
+| **Client** (71) | SSE stream merging, CSV formula-injection escaping, table sorting, profile and dashboard rendering |
+| **SQLite service** (59) | SQL allow-list, path traversal, CSV sanitisation, profiling accuracy against a real database |
+| **API** (58) | Authentication, dataset and dashboard ownership, share-link revocation, conversation memory, rate limits, cascade integrity |
+| **Agent** (107) | Refinement intent parsing, provider selection, self-correction routing, state-schema persistence, chart codegen |
 
 ## Engineering
 
-- **CI/CD** — GitHub Actions across four services with path filtering, Postgres and Redis service containers, migration round-trip verification, image builds and Trivy scanning
-- **Security scanning** — CodeQL, dependency audit, and full-history secret scanning on a weekly schedule
-- **Observability** — correlation ids propagated across every service, structured JSON logs, separate liveness and readiness probes
+- **CI/CD** — GitHub Actions across four services with path filtering, Postgres and Redis service containers, migration round-trip verification and image builds
 - **Caching** — Redis-backed schema and preview caching that degrades to a no-op rather than failing requests
 - **Rate limiting** — per-user limits on the endpoints that spend money
 - **Docs** — [architecture and decision records](./docs/ARCHITECTURE.md), an OpenAPI 3.1 spec with a browsable reference

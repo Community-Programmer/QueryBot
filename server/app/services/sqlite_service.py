@@ -11,7 +11,6 @@ import requests
 from flask import current_app
 
 from app.utils.logging import get_logger
-from app.utils.request_context import REQUEST_ID_HEADER, get_request_id
 
 logger = get_logger(__name__)
 
@@ -30,19 +29,8 @@ def _base_url() -> str:
 
 
 def _headers() -> dict[str, str]:
-    headers: dict[str, str] = {}
-
     token = current_app.config.get('SERVICE_TOKEN')
-    if token:
-        headers['Authorization'] = f'Bearer {token}'
-
-    # Forward the correlation id so one user action can be followed across
-    # service log streams rather than matched up by timestamp.
-    request_id = get_request_id()
-    if request_id:
-        headers[REQUEST_ID_HEADER] = request_id
-
-    return headers
+    return {'Authorization': f'Bearer {token}'} if token else {}
 
 
 def _timeout() -> int:

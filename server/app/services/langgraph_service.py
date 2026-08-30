@@ -29,6 +29,11 @@ RESULT_KEYS = (
     'formatted_table',
     'data_narrative',
     'results',
+    # Persisted alongside the rows. Its absence here meant every stored result had
+    # unnamed columns when reopened from history or pinned to a dashboard.
+    'result_columns',
+    # The styling the user asked for, so the next turn can build on it.
+    'chart_spec',
     'error',
 )
 
@@ -65,6 +70,7 @@ def stream_run(
     question: str,
     dataset_uuid: str,
     history: Optional[list[dict]] = None,
+    previous: Optional[dict] = None,
 ) -> Iterator[tuple[str, dict]]:
     """
     Run the agent and yield ``(sse_text, accumulated_result)`` per update.
@@ -79,6 +85,10 @@ def stream_run(
     if history:
         # Prior turns let the agent resolve follow-ups such as "and by region?".
         payload['history'] = history
+    if previous:
+        # The last answered turn, so "make it a pie chart" restyles that result
+        # instead of putting the question through the whole workflow again.
+        payload['previous'] = previous
 
     try:
         client = _client()

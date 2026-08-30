@@ -128,6 +128,10 @@ class Message(db.Model):
     # Assistant-only fields, null on user turns.
     sql_query = db.Column(db.Text, nullable=True)
     visualization = db.Column(db.String(50), nullable=True)
+    # Presentation choices the user asked for - palette, sort, row limit. Stored
+    # so styling accumulates over a conversation: "make it a pie chart" followed
+    # by "now in green" has to keep the pie.
+    chart_spec = db.Column(db.JSON, nullable=True)
     insights = db.Column(db.Text, nullable=True)
     data_narrative = db.Column(db.Text, nullable=True)
     formatted_table = db.Column(db.Text, nullable=True)
@@ -162,6 +166,7 @@ class Message(db.Model):
         optional = {
             'sql_query': self.sql_query,
             'visualization': self.visualization,
+            'chart_spec': self.chart_spec,
             'insights': self.insights,
             'data_narrative': self.data_narrative,
             'formatted_table': self.formatted_table,

@@ -69,8 +69,20 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 **`SECRET_KEY` / `JWT_SECRET_KEY`** in `server/.env` — two *different* random
 values. Production refuses to start if they are unset.
 
-**`GROQ_API_KEY`** in `langgraph_agent/.env` — from
-[console.groq.com](https://console.groq.com).
+**A model provider key** in `langgraph_agent/.env`. Groq is the default because
+it is the cheapest and fastest for this workload — get a key from
+[console.groq.com](https://console.groq.com). To use another provider, set
+`LLM_PROVIDER` and its key instead:
+
+| `LLM_PROVIDER` | Key | Default model |
+| --- | --- | --- |
+| `groq` | `GROQ_API_KEY` | `openai/gpt-oss-120b` |
+| `openai` | `OPENAI_API_KEY` | `gpt-5` |
+| `anthropic` | `ANTHROPIC_API_KEY` | `claude-opus-5` |
+| `google` | `GOOGLE_API_KEY` | `gemini-2.5-pro` |
+
+Set `LLM_MODEL` to override the default. The agent refuses to start with a
+message naming the variable if the selected provider's key is missing.
 
 ### Minimum working configuration
 
@@ -96,6 +108,7 @@ CORS_ORIGINS=http://localhost:5173
 
 `langgraph_agent/.env`
 ```env
+LLM_PROVIDER=groq
 GROQ_API_KEY=<your key>
 SQLITE_SERVICE_URL=http://localhost:3001
 SERVICE_TOKEN=<the same shared token>

@@ -15,12 +15,8 @@ import { usePlayground } from '@/hooks/usePlayground';
 import { cn } from '@/lib/utils';
 
 /**
- * The analysis workspace.
- *
- * Three columns on desktop: the dataset and history rail, the conversation, and
- * the results. The rail collapses and the columns stack on narrow screens - the
- * previous layout was a fixed 420px column inside a `h-screen` flex row, which
- * had no usable mobile form.
+ * The analysis workspace: the dataset and history rail, the conversation, and
+ * the results. The rail collapses and the columns stack on narrow screens.
  */
 const PlayGround = () => {
   const [isRailOpen, setIsRailOpen] = useState(true);
